@@ -1,0 +1,9 @@
+# Bản B – cảnh khác bản chính
+IMG_4104.MOV     10.0   3.2  b01_bia
+IMG_4096.MOV     120.0  3.0  b02_vo_vien
+IMG_4098.MOV     1.0    3.0  b03_khay
+IMG_4100.MOV     2.5    3.0  b04_mo_noi
+IMG_4102.MOV     4.5    3.0  b05_hen_gio
+IMG_4103.MOV     3.5    3.0  b06_chin
+IMG_4105_2.MOV   3.8    3.0  b07_can_nhan
+IMG_4106.MOV     1.5    3.0  b08_ket

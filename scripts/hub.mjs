@@ -25,6 +25,32 @@ async function api(p, opts = {}) {
 }
 const files = (p, kind) => (p.files || []).filter((f) => (kind === 'result' ? f.kind === 'result' : f.kind !== 'result'));
 
+
+// Up thẳng lên Google theo từng phần 64 MB (file lớn không bị hết thời gian chờ)
+async function upload(slug, fp, kind) {
+  const st = fs.statSync(fp), name = path.basename(fp);
+  const mime = MIME[path.extname(fp).toLowerCase()] || 'application/octet-stream';
+  const {uploadUrl} = await api(`/${slug}/upload`, {method: 'POST', json: {name, size: st.size, mime, kind}});
+  const CH = 64 * 1024 * 1024, fd = fs.openSync(fp, 'r');
+  let d = {};
+  try {
+    for (let off = 0; off < st.size; off += CH) {
+      const len = Math.min(CH, st.size - off), buf = Buffer.alloc(len);
+      fs.readSync(fd, buf, 0, len, off);
+      let r;
+      for (let t = 0; ; t++) {
+        try { r = await fetch(uploadUrl, {method: 'PUT', headers: {'content-range': `bytes ${off}-${off + len - 1}/${st.size}`}, body: buf}); break; }
+        catch (e) { if (t >= 3) throw e; }
+      }
+      if (r.status === 308) { process.stdout.write(`\r  ${name} ${Math.round((off + len) / st.size * 100)}%`); continue; }
+      d = await r.json().catch(() => ({}));
+      if (!r.ok || !d.id) die(`Up ${name} lỗi ${r.status}`);
+    }
+  } finally { fs.closeSync(fd); }
+  await api(`/${slug}/files`, {method: 'POST', json: {id: d.id, kind}});
+  console.log(`\r↑ ${name}  ${mb(st.size)}`);
+}
+
 const cmds = {
   async list() {
     const ps = (await api('')).filter((p) => p.type !== 'sample');
@@ -78,29 +104,12 @@ const cmds = {
   },
   async push(slug, ...paths) {
     if (!paths.length) die('Cần ít nhất 1 file');
-    for (const fp of paths) {
-      const st = fs.statSync(fp), name = path.basename(fp);
-      const mime = MIME[path.extname(fp).toLowerCase()] || 'application/octet-stream';
-      const {uploadUrl} = await api(`/${slug}/upload`, {method: 'POST', json: {name, size: st.size, mime, kind: 'result'}});
-      const r = await fetch(uploadUrl, {method: 'PUT', headers: {'content-type': mime, 'content-length': String(st.size)}, body: fs.createReadStream(fp), duplex: 'half'});
-      const d = await r.json().catch(() => ({}));
-      if (!r.ok || !d.id) die(`Up ${name} lỗi ${r.status}`);
-      await api(`/${slug}/files`, {method: 'POST', json: {id: d.id, kind: 'result'}});
-      console.log(`↑ ${name}  ${mb(st.size)}`);
-    }
+    for (const fp of paths) await upload(slug, fp, 'result');
   },
-  // Up source từ máy (khi người dùng gửi file trực tiếp)
+  // Up source từ máy (khi người dùng gửi file trực tiếp); bỏ qua file đã có
   async 'push-source'(slug, ...paths) {
-    for (const fp of paths) {
-      const st = fs.statSync(fp), name = path.basename(fp);
-      const mime = MIME[path.extname(fp).toLowerCase()] || 'application/octet-stream';
-      const {uploadUrl} = await api(`/${slug}/upload`, {method: 'POST', json: {name, size: st.size, mime, kind: 'source'}});
-      const r = await fetch(uploadUrl, {method: 'PUT', headers: {'content-type': mime, 'content-length': String(st.size)}, body: fs.createReadStream(fp), duplex: 'half'});
-      const d = await r.json().catch(() => ({}));
-      if (!r.ok || !d.id) die(`Up ${name} lỗi ${r.status}`);
-      await api(`/${slug}/files`, {method: 'POST', json: {id: d.id, kind: 'source'}});
-      console.log(`↑ ${name}  ${mb(st.size)}`);
-    }
+    const have = new Set(((await api(`/${slug}`)).files || []).filter((f) => f.kind !== 'result').map((f) => f.name));
+    for (const fp of paths) have.has(path.basename(fp)) ? console.log(`= ${path.basename(fp)} (đã có)`) : await upload(slug, fp, 'source');
   },
 };
 
