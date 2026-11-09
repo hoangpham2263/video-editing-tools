@@ -187,7 +187,7 @@ async function renderProduct(slug) {
   // Kết quả chỉ hiện bản mới nhất: 1 video + 1 ảnh bìa
   const newest = [...split(p).results].sort((a, b) => (b.uploaded || '').localeCompare(a.uploaded || ''));
   const results = [newest.find(isVideo), newest.find(isImage)].filter(Boolean);
-  const tab = tabOf[slug] || (results.length ? 'result' : 'source');
+  const tab = tabOf[slug] || 'source';
   const byId = Object.fromEntries((p.files || []).map((f) => [f.id, f]));
 
   app.innerHTML = `
@@ -202,8 +202,8 @@ async function renderProduct(slug) {
     </div>
 
     <div class="seg" role="tablist">
-      <button role="tab" data-tab="result" aria-selected="${tab === 'result'}">Kết quả <span>${results.length}</span></button>
       <button role="tab" data-tab="source" aria-selected="${tab === 'source'}">Source <span>${sources.length}</span></button>
+      <button role="tab" data-tab="result" aria-selected="${tab === 'result'}">Kết quả <span>${results.length}</span></button>
     </div>
 
     <section data-panel="result" ${tab === 'result' ? '' : 'hidden'}>
