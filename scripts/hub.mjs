@@ -1,25 +1,21 @@
 #!/usr/bin/env node
 // Review Hub CLI – dữ liệu ở Google Drive qua Worker tools-hub-api ("Tools Hub/Review Video/<mã>/").
-// Cần mật khẩu app Tools Hub trong biến môi trường REVIEW_HUB_KEY (hoặc file ~/.config/review-video/key).
 import fs from 'node:fs';
-import os from 'node:os';
 import path from 'node:path';
 import {fileURLToPath} from 'node:url';
 
 const API = process.env.REVIEW_HUB_API || 'https://tools-hub-api.hoangpham2263.workers.dev';
 const SKILL = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const STATUS = {new: 'Chờ dựng', editing: 'Đang dựng', done: 'Có kết quả', posted: 'Đã đăng'};
-const keyFile = path.join(os.homedir(), '.config/review-video/key');
-const KEY = process.env.REVIEW_HUB_KEY || (fs.existsSync(keyFile) ? fs.readFileSync(keyFile, 'utf8').trim() : '');
 const mb = (b) => (b / 1e6).toFixed(1) + ' MB';
 const die = (m) => { console.error(m); process.exit(1); };
 const MIME = {'.mp4': 'video/mp4', '.mov': 'video/quicktime', '.png': 'image/png', '.jpg': 'image/jpeg', '.jpeg': 'image/jpeg'};
 
 async function api(p, opts = {}) {
-  if (!KEY) die(`Thiếu mật khẩu: đặt REVIEW_HUB_KEY hoặc ghi vào ${keyFile}`);
+
   const r = await fetch(`${API}/api/review${p}`, {
     method: opts.method || 'GET',
-    headers: {'x-admin-key': KEY, origin: 'https://hoangpham.is-a.dev', ...(opts.json ? {'content-type': 'application/json'} : {})},
+    headers: {origin: 'https://hoangpham.is-a.dev', ...(opts.json ? {'content-type': 'application/json'} : {})},
     body: opts.json ? JSON.stringify(opts.json) : undefined,
   });
   const d = await r.json().catch(() => ({}));

@@ -51,7 +51,7 @@ Người dùng sửa gì thì sửa `cuts.txt`/`json`, cắt lại đúng clip �
 
 ## Review Hub
 
-Web: https://hoangpham.is-a.dev/review-video/ (mã nguồn `docs/`). Dữ liệu nằm ở **Google Drive** qua Worker `tools-hub-api` (thư mục `Tools Hub/Review Video/<mã>/Source|Kết quả`). Đăng nhập bằng mật khẩu app Tools Hub; CLI đọc từ `REVIEW_HUB_KEY` hoặc `~/.config/review-video/key`.
+Web: https://hoangpham.is-a.dev/review-video/ (mã nguồn `docs/`). Dữ liệu nằm ở **Google Drive** qua Worker `tools-hub-api` (thư mục `Tools Hub/Review Video/<mã>/Source|Kết quả`). Không cần mật khẩu.
 
 - Mỗi sản phẩm = 1 Release, tag = mã sản phẩm (slug).
 - File thường trong Release = **source** (người quay kéo thả vào trang sửa Release, tối đa 2 GB/file, giữ nguyên chất lượng).

@@ -7,10 +7,6 @@ const isImage = (f) => /^image\//.test(f.mime || '') || /\.(png|jpe?g|webp|gif)$
 const $ = (s, el = document) => el.querySelector(s);
 const app = $('#app');
 
-const store = {
-  get token() { try { return localStorage.getItem('hub.key') || ''; } catch { return ''; } },
-  set token(v) { try { localStorage.setItem('hub.key', v); } catch {} },
-};
 
 const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({'&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'}[c]));
 const size = (b) => (b > 1e9 ? (b / 1e9).toFixed(2) + ' GB' : b > 1e6 ? (b / 1e6).toFixed(1) + ' MB' : Math.max(1, Math.round(b / 1e3)) + ' KB');
@@ -25,14 +21,12 @@ function toast(msg) {
 }
 
 async function api(path, opts = {}) {
-  if (!store.token) { openSettings(); throw new Error('Chưa đăng nhập'); }
   const r = await fetch(`${API}/api/review${path}`, {
     method: opts.method || 'GET',
-    headers: {'x-admin-key': store.token, ...(opts.json ? {'content-type': 'application/json'} : {})},
+    headers: {...(opts.json ? {'content-type': 'application/json'} : {})},
     body: opts.json ? JSON.stringify(opts.json) : undefined,
   });
   const d = await r.json().catch(() => ({}));
-  if (r.status === 401) { openSettings(); throw new Error('Sai mật khẩu'); }
   if (!r.ok) throw new Error(d.error || `Lỗi ${r.status}`);
   return d;
 }
@@ -200,15 +194,7 @@ async function renderProduct(slug) {
 }
 
 /* ---------- Hộp thoại ---------- */
-function openSettings() {
-  $('#formSettings').token.value = store.token;
-  if (!$('#dlgSettings').open) $('#dlgSettings').showModal();
-}
 const onOk = {
-  async Settings(f) {
-    store.token = f.token.value.trim();
-    try { await api(''); toast('Đã đăng nhập'); route(); } catch (e) { toast(e.message); }
-  },
   async New(f) {
     try {
       const p = await api('', {method: 'POST', json: {name: f.querySelector('[name=name]').value.trim(), note: f.note.value}});
@@ -225,7 +211,6 @@ for (const id of Object.keys(onOk)) {
     if (e.submitter?.value !== 'cancel') onOk[id](f);
   });
 }
-$('#btnSettings').onclick = openSettings;
 
 /* ---------- Điều hướng ---------- */
 function route() {
@@ -234,5 +219,4 @@ function route() {
   else renderList();
 }
 window.addEventListener('hashchange', route);
-if (!store.token) openSettings();
 route();
