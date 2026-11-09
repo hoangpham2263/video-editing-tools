@@ -263,3 +263,8 @@ button:focus, .btn:focus { outline: none; }
 dialog:not(.player) .actions { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 12px; direction: rtl; }
 dialog:not(.player) .actions button { height: 44px; font-size: 15px; direction: ltr; }
 dialog:not(.player) .actions button[value="cancel"] { border: 1px solid var(--input); background: var(--background); }
+
+.dlg-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 12px; }
+.dlg-head h2 { margin: 0; }
+.dlg-head .x { width: 40px; height: 40px; padding: 0; font-size: 16px; flex: none; margin: -8px -8px -8px 0; }
+dialog button { touch-action: manipulation; -webkit-tap-highlight-color: transparent; }

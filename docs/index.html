@@ -8,7 +8,7 @@
   <link rel="icon" href="brand/favicon.ico" sizes="any">
   <link rel="icon" href="brand/hp-favicon.svg" type="image/svg+xml">
   <link rel="apple-touch-icon" href="brand/apple-touch-icon.png">
-  <link rel="stylesheet" href="app.css?v=18">
+  <link rel="stylesheet" href="app.css?v=19">
 </head>
 <body>
   <header class="top">
@@ -29,7 +29,7 @@
 
   <dialog id="dlgNew">
     <form method="dialog" id="formNew">
-      <h2>Sản phẩm mới</h2>
+      <div class="dlg-head"><h2>Sản phẩm mới</h2><button type="button" value="cancel" class="ghost x" aria-label="Đóng">✕</button></div>
       <label>Tên sản phẩm
         <input name="name" required maxlength="120" placeholder="Dép sục phối màu ZUTANIQ">
       </label>
@@ -45,7 +45,7 @@
 
   <dialog id="dlgNote">
     <form method="dialog" id="formNote">
-      <h2>Sửa ghi chú</h2>
+      <div class="dlg-head"><h2>Sửa ghi chú</h2><button type="button" value="cancel" class="ghost x" aria-label="Đóng">✕</button></div>
       <label>Ghi chú cho người dựng
         <textarea name="note" rows="5" placeholder="Màu, thương hiệu, điểm nổi bật, deal, link sản phẩm..."></textarea>
       </label>
@@ -58,7 +58,7 @@
 
   <dialog id="dlgConfirm">
     <form method="dialog" id="formConfirm">
-      <h2 id="confirmTitle">Xoá?</h2>
+      <div class="dlg-head"><h2 id="confirmTitle">Xoá?</h2><button type="button" value="cancel" class="ghost x" aria-label="Đóng">✕</button></div>
       <p class="meta" id="confirmText" style="margin:0 0 8px"></p>
       <div class="row end actions">
         <button type="submit" value="ok" class="primary danger-fill">Xoá</button>
@@ -69,6 +69,6 @@
 
   <div id="toast" role="status" aria-live="polite"></div>
   <script>document.getElementById("year").textContent = new Date().getFullYear()</script>
-  <script src="app.js?v=18"></script>
+  <script src="app.js?v=19"></script>
 </body>
 </html>

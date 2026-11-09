@@ -256,10 +256,25 @@ function ask(id, setup) {
   const dlg = $(`#dlg${id}`), f = $(`#form${id}`);
   setup?.(f);
   return new Promise((resolve) => {
-    const done = (ok) => { dlg.close(); resolve(ok ? f : null); };
-    f.onsubmit = (e) => { e.preventDefault(); if (f.reportValidity()) done(true); }; // Enter trong ô nhập
-    f.querySelectorAll('button[value]').forEach((b) => (b.onclick = (e) => { e.preventDefault(); if (b.value === 'cancel') return done(false); if (f.reportValidity()) done(true); }));
-    dlg.oncancel = () => resolve(null);
+    let closed = false;
+    const done = (ok) => {
+      if (closed) return;
+      if (ok && !f.reportValidity()) return;
+      closed = true;
+      document.activeElement?.blur?.();
+      dlg.close();
+      resolve(ok ? f : null);
+    };
+    f.onsubmit = (e) => { e.preventDefault(); done(true); }; // Enter trong ô nhập
+    // Chạm trên điện thoại: xử lý ngay ở touchend (không chờ click, tránh lần chạm đầu chỉ để ẩn bàn phím)
+    f.querySelectorAll('button[value]').forEach((b) => {
+      const go = (e) => { e.preventDefault(); done(b.value !== 'cancel'); };
+      b.onclick = go;
+      b.ontouchend = go;
+    });
+    // Chạm ra ngoài popup thì đóng
+    dlg.onclick = (e) => { if (e.target === dlg) done(false); };
+    dlg.oncancel = (e) => { e.preventDefault(); done(false); };
     dlg.showModal();
   });
 }
@@ -268,10 +283,13 @@ const confirmDel = (title, text) => ask('Confirm', () => { $('#confirmTitle').te
 const onOk = {
   async New(f) {
     try {
-      const p = await api('', {method: 'POST', json: {name: f.querySelector('[name=name]').value.trim(), note: f.note.value}});
+      const name = f.querySelector('[name=name]').value.trim();
+      toast('Đang tạo…');
+      const p = await api('', {method: 'POST', json: {name, note: f.note.value}});
       put(p);
       f.reset();
-      location.hash = `#/p/${encodeURIComponent(p.slug)}`;
+      toast(`Đã tạo "${p.name}"`);
+      if (!location.hash.startsWith('#/p/')) renderList();
     } catch (e) { toast(e.message); }
   },
 };
