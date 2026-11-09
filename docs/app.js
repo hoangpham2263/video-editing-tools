@@ -148,7 +148,7 @@ const dropHtml = (id, text, big) => `<label class="drop ${big ? 'big' : ''}" id=
 let filter = 'all';
 function renderList() { renderListAsync(); }
 async function renderListAsync() {
-  app.innerHTML = `<div class="row between"><div><h1>Sản phẩm</h1><p class="meta" style="margin:4px 0 0">Mỗi sản phẩm là một video cần làm.</p></div><button class="primary" id="btnNew">+ Sản phẩm mới</button></div>
+  app.innerHTML = `<div class="row between"><h1>Sản phẩm</h1><button class="primary" id="btnNew">+ Sản phẩm mới</button></div>
     <div class="tabs" id="tabs"></div><div class="list" id="list"><p class="empty">Đang tải…</p></div>`;
   $('#btnNew').onclick = () => $('#dlgNew').showModal();
   if (!items) {
