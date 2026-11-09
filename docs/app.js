@@ -36,25 +36,6 @@ const split = (p) => ({
   results: (p.files || []).filter((f) => f.kind === 'result'),
 });
 
-const STEPS = [
-  ['new', 'Up source', 'Người quay up video'],
-  ['editing', 'Đang dựng', 'Người dựng làm video'],
-  ['done', 'Có video', 'Xem và tải về'],
-  ['posted', 'Đã đăng', 'Xong'],
-];
-const NEXT = {
-  new: (p) => split(p).sources.length
-    ? ['Đã có source, chờ người dựng làm video.', 'Có thể up thêm source nếu còn cảnh muốn thêm.']
-    : ['Cần up video quay sản phẩm.', 'Bấm vào ô "Up source" bên dưới, chọn video trong máy hoặc điện thoại.'],
-  editing: () => ['Người dựng đang làm video.', 'Khi xong, video sẽ hiện ở mục "Video kết quả".'],
-  done: () => ['Video đã xong. Bấm vào video để xem, bấm "Tải về" để lấy về đăng.', 'Đăng xong thì bấm "Đánh dấu đã đăng".'],
-  posted: () => ['Sản phẩm này đã đăng xong.', ''],
-};
-function stepper(status) {
-  const cur = STEPS.findIndex(([k]) => k === status);
-  return `<ol class="steps">${STEPS.map(([k, t, d], i) => `<li class="${i < cur ? 'past' : i === cur ? 'now' : ''}" data-step="${k}">
-    <span class="dot">${i < cur ? '✓' : i + 1}</span><span><b>${t}</b><small>${d}</small></span></li>`).join('')}</ol>`;
-}
 // Tên dễ đọc cho file kết quả
 const label = (f) => (f.kind === 'result' ? (isImage(f) ? 'Ảnh bìa' : 'Video review') : f.name);
 

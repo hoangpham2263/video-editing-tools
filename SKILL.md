@@ -45,19 +45,18 @@ Thư mục làm việc cho từng sản phẩm: `work/<slug>/` trong skill (đã
 7. **Tự kiểm tra**: xuất vài still ở giữa từng cảnh (`--frame`), đối chiếu phụ đề với hình, màu, chính tả, tên thương hiệu in hoa, không cắt gần, không khựng ở đầu cảnh.
 8. **Giao**: mở thư mục `work/<slug>/out/` cho người dùng xem. Khi người dùng duyệt thì `node scripts/hub.mjs push <slug> work/<slug>/out/*.mp4 work/<slug>/out/*_cover.png` (đặt trạng thái "Có kết quả"). Một sản phẩm có thể có nhiều video kết quả.
 
-9. **Lưu dữ liệu**: chép `cuts.txt`, `props.json` (từ `edits/<slug>.json`) và `note.txt` vào `~/Workspace/review-video-sources/products/<slug>/`, cập nhật bảng trong README của repo đó, commit và push.
+9. **Lưu cách dựng**: giữ `template/edits/<slug>.cuts.txt` và `template/edits/<slug>.json` trong repo skill (commit khi người dùng yêu cầu) để lần sau sửa/dựng lại.
 
 Người dùng sửa gì thì sửa `cuts.txt`/`json`, cắt lại đúng clip đó và render lại. Quy tắc mới người dùng đưa ra thì thêm vào `references/rules.md`.
 
 ## Review Hub
 
-Web: https://hoangpham.is-a.dev/review-video/ (mã nguồn `docs/`). Dữ liệu nằm ở **Google Drive** qua Worker `tools-hub-api` (thư mục `Tools Hub/Review Video/<mã>/Source|Kết quả`). Không cần mật khẩu.
+Web: https://hoangpham.is-a.dev/review-video/ (mã nguồn `docs/`, không cần mật khẩu). Dữ liệu ở **Google Drive** qua Worker `tools-hub-api` (repo `tools-hub`, file `worker/review.js`):
 
-- Mỗi sản phẩm = 1 Release, tag = mã sản phẩm (slug).
-- File thường trong Release = **source** (người quay kéo thả vào trang sửa Release, tối đa 2 GB/file, giữ nguyên chất lượng).
-- File tên `KQ_...` = **video kết quả** do skill đẩy lên.
-- Trạng thái ở dòng đầu mô tả Release: `<!-- status:new|editing|done|posted -->` (Chờ dựng / Đang dựng / Có kết quả / Đã đăng).
+- Drive: `Tools Hub/Review Video/<mã>/Source/` và `.../Kết quả/`. Danh sách sản phẩm lưu trong KV của Worker.
+- Up file: Worker mở phiên upload, trình duyệt/CLI gửi thẳng lên Google, giữ nguyên chất lượng, tối đa 5 GB/file.
+- Trạng thái: `new | editing | done | posted` (Chờ dựng / Đang dựng / Có kết quả / Đã đăng).
+- Web chỉ hiện video và ảnh bìa kết quả mới nhất.
+- Video mẫu để phân tích style: sản phẩm `video-mau-thokunrw-phan-tich-style-o3e6`.
 
-Người quay cần tài khoản GitHub được mời vào repo dữ liệu. Web dùng mã GitHub (token classic, quyền `repo`) lưu trong trình duyệt. Xem video ngay trên web nhờ `worker/` (Worker `yooi`, chỉ đổi asset id → link phát tạm; deploy `cd worker && npx wrangler deploy`).
-
-`scripts/hub.mjs` dùng `gh` đã đăng nhập: `list`, `show <slug>`, `create "<tên>" ["ghi chú"]`, `pull <slug> [thư-mục]`, `push <slug> <file...>`, `status <slug> <new|editing|done|posted>`.
+`scripts/hub.mjs`: `list`, `show <mã>`, `create "<tên>" ["ghi chú"]`, `pull <mã> [thư-mục]`, `push <mã> <file...>` (kết quả), `push-source <mã> <file...>`, `status <mã> <trạng-thái>`.
