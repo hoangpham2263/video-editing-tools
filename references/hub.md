@@ -1,4 +1,4 @@
-# Cutly
+# Video Editing Tools
 
 Web: https://hoangpham.is-a.dev/review-video/ (mã nguồn `docs/`, không cần mật khẩu). Người quay tạo sản phẩm và up source trên web; AI lấy source về dựng rồi up thành phẩm; người đăng tải về đăng.
 

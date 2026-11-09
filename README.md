@@ -9,7 +9,7 @@ Skill Claude Code dựng video review sản phẩm TikTok Shop theo style @thoku
 - Các bước của AI: [SKILL.md](SKILL.md)
 - Quy tắc dựng (đã thống nhất): [references/rules.md](references/rules.md)
 - Hub, Drive, trạng thái, lệnh: [references/hub.md](references/hub.md)
-- Web Cutly cho người quay up source / tải kết quả: https://hoangpham.is-a.dev/review-video/ (mã: `docs/`). File lưu ở Google Drive qua Worker `tools-hub-api`.
+- Web Video Editing Tools cho người quay up source / tải kết quả: https://hoangpham.is-a.dev/review-video/ (mã: `docs/`). File lưu ở Google Drive qua Worker `tools-hub-api`.
 
 ## Cài lần đầu
 

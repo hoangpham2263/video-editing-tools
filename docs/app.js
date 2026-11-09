@@ -1,4 +1,4 @@
-// Cutly – dữ liệu ở Google Drive qua Worker tools-hub-api (Drive "Tools Hub/Review Video/<mã>/").
+// Video Editing Tools – dữ liệu ở Google Drive qua Worker tools-hub-api (Drive "Tools Hub/Review Video/<mã>/").
 // Up file: Worker mở phiên upload, trình duyệt gửi thẳng lên Google (giữ nguyên chất lượng, tối đa 5 GB/file).
 // Nhanh kiểu memories: giữ danh sách trong bộ nhớ (+ bản lưu trong trình duyệt để mở trang là hiện ngay),
 // sửa/xoá/up xong chỉ thay đúng sản phẩm đó từ phản hồi, không tải lại cả trang.
