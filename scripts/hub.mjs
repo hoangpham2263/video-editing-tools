@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// Video Editing Tools CLI – dữ liệu ở Google Drive qua Worker tools-hub-api ("Tools Hub/Review Video/<mã>/").
+// Video Editing Tools CLI – dữ liệu ở Google Drive qua Worker tools-hub-api ("Tools Hub/Video Editing Tools/<mã>/").
 import fs from 'node:fs';
 import path from 'node:path';
 import {fileURLToPath} from 'node:url';
@@ -14,7 +14,7 @@ const MIME = {'.mp4': 'video/mp4', '.mov': 'video/quicktime', '.png': 'image/png
 
 async function api(p, opts = {}) {
 
-  const r = await fetch(`${API}/api/review${p}`, {
+  const r = await fetch(`${API}/api/video-editing-tools${p}`, {
     method: opts.method || 'GET',
     headers: {origin: 'https://hoangpham.is-a.dev', ...(opts.json ? {'content-type': 'application/json'} : {})},
     body: opts.json ? JSON.stringify(opts.json) : undefined,
@@ -43,7 +43,7 @@ const cmds = {
     if (!name) die('Cần tên sản phẩm');
     console.log((await api('', {method: 'POST', json: {name, note}})).slug);
   },
-  // Video mẫu: lưu riêng ở Drive "Review Video/Video mẫu/<mã>/"
+  // Video mẫu: lưu riêng ở Drive "Video Editing Tools/Video mẫu/<mã>/"
   async 'create-sample'(name, note = '') {
     if (!name) die('Cần tên mẫu');
     console.log((await api('', {method: 'POST', json: {name, note, type: 'sample'}})).slug);

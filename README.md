@@ -1,4 +1,4 @@
-# Review Video
+# Video Editing Tools
 
 Skill Claude Code dựng video review sản phẩm TikTok Shop theo style @thokunrw: cảnh bìa có tiêu đề giấy xé, phụ đề gõ chữ, cắt thẳng ~3 giây/cảnh, không nhạc (tự ghép nhạc trend khi đăng).
 
@@ -9,14 +9,14 @@ Skill Claude Code dựng video review sản phẩm TikTok Shop theo style @thoku
 - Các bước của AI: [SKILL.md](SKILL.md)
 - Quy tắc dựng (đã thống nhất): [references/rules.md](references/rules.md)
 - Hub, Drive, trạng thái, lệnh: [references/hub.md](references/hub.md)
-- Web Video Editing Tools cho người quay up source / tải kết quả: https://hoangpham.is-a.dev/review-video/ (mã: `docs/`). File lưu ở Google Drive qua Worker `tools-hub-api`.
+- Web Video Editing Tools cho người quay up source / tải kết quả: https://hoangpham.is-a.dev/video-editing-tools/ (mã: `docs/`). File lưu ở Google Drive qua Worker `tools-hub-api`.
 
 ## Cài lần đầu
 
 ```bash
-git clone git@github.com:hoangpham2263/review-video.git ~/Workspace/review-video
-ln -s ~/Workspace/review-video ~/.claude/skills/review-video
-cd ~/Workspace/review-video/template && npm install
+git clone git@github.com:hoangpham2263/video-editing-tools.git ~/Workspace/video-editing-tools
+ln -s ~/Workspace/video-editing-tools ~/.claude/skills/video-editing-tools
+cd ~/Workspace/video-editing-tools/template && npm install
 ```
 
 Cần: Node 20+, ffmpeg, Python 3 (numpy, scipy nếu tạo nhạc).
@@ -36,11 +36,11 @@ work/<mã>/source|out                 file tạm (gitignore)
 ## Lệnh Hub
 
 ```bash
-H="node ~/Workspace/review-video/scripts/hub.mjs"
+H="node ~/Workspace/video-editing-tools/scripts/hub.mjs"
 $H list
 $H pull <slug>                 # source về work/<slug>/source
 zsh scripts/build.sh <slug> --push   # dựng + up thành phẩm
 $H status <slug> posted
 ```
 
-Video gốc và kết quả không nằm trong repo; chúng ở Google Drive `Tools Hub/Review Video/` (tối đa 5 GB/file).
+Video gốc và kết quả không nằm trong repo; chúng ở Google Drive `Tools Hub/Video Editing Tools/` (tối đa 5 GB/file).

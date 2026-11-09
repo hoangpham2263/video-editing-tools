@@ -1,4 +1,4 @@
-// Video Editing Tools – dữ liệu ở Google Drive qua Worker tools-hub-api (Drive "Tools Hub/Review Video/<mã>/").
+// Video Editing Tools – dữ liệu ở Google Drive qua Worker tools-hub-api (Drive "Tools Hub/Video Editing Tools/<mã>/").
 // Up file: Worker mở phiên upload, trình duyệt gửi thẳng lên Google (giữ nguyên chất lượng, tối đa 5 GB/file).
 // Nhanh kiểu memories: giữ danh sách trong bộ nhớ (+ bản lưu trong trình duyệt để mở trang là hiện ngay),
 // sửa/xoá/up xong chỉ thay đúng sản phẩm đó từ phản hồi, không tải lại cả trang.
@@ -25,7 +25,7 @@ function toast(msg) {
 }
 
 async function api(path, opts = {}) {
-  const r = await fetch(`${API}/api/review${path}`, {
+  const r = await fetch(`${API}/api/video-editing-tools${path}`, {
     method: opts.method || 'GET',
     headers: {...(opts.json ? {'content-type': 'application/json'} : {})},
     body: opts.json ? JSON.stringify(opts.json) : undefined,
@@ -209,7 +209,7 @@ async function renderSamples() {
     </section>
     <section>
       <h2>Lưu trữ</h2>
-      <div class="card meta">Google Drive: <b>Tools Hub/Review Video/</b><br>· <b>Sản phẩm/</b>&lt;sản phẩm&gt;/Source, Kết quả<br>· <b>Video mẫu/</b>&lt;mẫu&gt;/</div>
+      <div class="card meta">Google Drive: <b>Tools Hub/Video Editing Tools/</b><br>· <b>Sản phẩm/</b>&lt;sản phẩm&gt;/Source, Kết quả<br>· <b>Video mẫu/</b>&lt;mẫu&gt;/</div>
     </section>`;
   $('#btnNew').onclick = () => openNew('sample');
   if (!items) {

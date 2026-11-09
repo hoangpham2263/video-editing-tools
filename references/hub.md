@@ -1,13 +1,13 @@
 # Video Editing Tools
 
-Web: https://hoangpham.is-a.dev/review-video/ (mã nguồn `docs/`, không cần mật khẩu). Người quay tạo sản phẩm và up source trên web; AI lấy source về dựng rồi up thành phẩm; người đăng tải về đăng.
+Web: https://hoangpham.is-a.dev/video-editing-tools/ (mã nguồn `docs/`, không cần mật khẩu). Người quay tạo sản phẩm và up source trên web; AI lấy source về dựng rồi up thành phẩm; người đăng tải về đăng.
 
 ## Lưu trữ
 
 Google Drive qua Worker `tools-hub-api` (repo `hoangpham2263/tools-hub`, file `worker/review.js`):
 
 ```text
-Tools Hub/Review Video/
+Tools Hub/Video Editing Tools/
 ├── Sản phẩm/<mã>/Source/      video quay
 ├── Sản phẩm/<mã>/Kết quả/     video thành phẩm + ảnh bìa
 └── Video mẫu/<mã>/            video tham khảo để phân tích style

@@ -1,9 +1,9 @@
 ---
-name: review-video
-description: Dựng video review sản phẩm TikTok Shop theo style @thokunrw (Remotion + ffmpeg) từ source quay thật, lấy source và đẩy video thành phẩm qua Video Editing Tools (Google Drive). Dùng khi người dùng nói "dựng video", "làm video review", "edit video sản phẩm", "lấy source", "có source mới", "đẩy video lên hub", hoặc gửi file .MOV/.MP4 sản phẩm.
+name: video-editing-tools
+description: Dựng video ngắn dọc 9:16 cho TikTok, Reels, Shorts (Remotion + ffmpeg) từ source quay thật – mặc định style review sản phẩm @thokunrw; lấy source và đẩy thành phẩm qua web Video Editing Tools (Google Drive). Dùng khi người dùng nói "dựng video", "làm video review", "edit video", "lấy source", "có source mới", "đẩy video lên", hoặc gửi file .MOV/.MP4.
 ---
 
-# Review Video
+# Video Editing Tools
 
 Dựng video review dọc 9:16 giống mẫu @thokunrw: cảnh bìa có tiêu đề giấy xé, phụ đề gõ chữ, cắt thẳng ~3s/cảnh, không nhạc. Dựng xong, tự kiểm tra đạt thì **tự up thành phẩm lên Hub**, không cần chờ người dùng duyệt.
 
@@ -47,7 +47,7 @@ work/<mã>/source|out       file tạm của từng sản phẩm (gitignore, kh�
    - có 1–2 cảnh người thật nếu source có; giọng phụ đề tiết chế đúng `rules.md`.
    Chưa đạt thì sửa `cuts.txt`/`props.json` và chạy lại bước 5.
 7. **Up thành phẩm**: `node scripts/hub.mjs push <mã> work/<mã>/out/<mã>.mp4 work/<mã>/out/<mã>_cover.png` (hoặc bước 5 với `--push`). Hub tự chuyển trạng thái "Đã edit"; web chỉ hiện video + ảnh bìa mới nhất nên up lại bản sửa là đủ.
-8. **Báo người dùng**: link web sản phẩm `https://hoangpham.is-a.dev/review-video/#/p/<mã>`, tóm tắt cảnh và phụ đề đã dùng, mở `work/<mã>/out/`.
+8. **Báo người dùng**: link web sản phẩm `https://hoangpham.is-a.dev/video-editing-tools/#/p/<mã>`, tóm tắt cảnh và phụ đề đã dùng, mở `work/<mã>/out/`.
 9. **Lưu cách dựng**: `products/<mã>/` là dữ liệu của repo – commit và push khi người dùng yêu cầu commit.
 
 Người dùng góp ý: sửa `cuts.txt`/`props.json`, chạy lại `build.sh <mã> --push`. Quy tắc mới người dùng đưa ra thì thêm vào `references/rules.md`.
