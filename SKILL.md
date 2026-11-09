@@ -45,6 +45,8 @@ Thư mục làm việc cho từng sản phẩm: `work/<slug>/` trong skill (đã
 7. **Tự kiểm tra**: xuất vài still ở giữa từng cảnh (`--frame`), đối chiếu phụ đề với hình, màu, chính tả, tên thương hiệu in hoa, không cắt gần, không khựng ở đầu cảnh.
 8. **Giao**: mở thư mục `work/<slug>/out/` cho người dùng xem. Khi người dùng duyệt thì `node scripts/hub.mjs push <slug> work/<slug>/out/*.mp4 work/<slug>/out/*_cover.png` (đặt trạng thái "Có kết quả"). Một sản phẩm có thể có nhiều video kết quả.
 
+9. **Lưu dữ liệu**: chép `cuts.txt`, `props.json` (từ `edits/<slug>.json`) và `note.txt` vào `~/Workspace/review-video-sources/products/<slug>/`, cập nhật bảng trong README của repo đó, commit và push.
+
 Người dùng sửa gì thì sửa `cuts.txt`/`json`, cắt lại đúng clip đó và render lại. Quy tắc mới người dùng đưa ra thì thêm vào `references/rules.md`.
 
 ## Review Hub

@@ -7,6 +7,7 @@ Skill Claude Code dựng video review sản phẩm TikTok Shop theo style @thoku
 ```
 
 - Các bước của AI: [SKILL.md](SKILL.md)
+- Dữ liệu từng sản phẩm (cảnh, phụ đề, ghi chú): [review-video-sources](https://github.com/hoangpham2263/review-video-sources)
 - Quy tắc dựng (đã thống nhất): [references/rules.md](references/rules.md)
 - Web cho người quay up source / tải kết quả: https://hoangpham.is-a.dev/review-video/ (mã: `docs/`, máy chủ: `worker/`, hướng dẫn: [references/hub.md](references/hub.md))
 
@@ -14,6 +15,7 @@ Skill Claude Code dựng video review sản phẩm TikTok Shop theo style @thoku
 
 ```bash
 git clone git@github.com:hoangpham2263/review-video.git ~/Workspace/review-video
+git clone git@github.com:hoangpham2263/review-video-sources.git ~/Workspace/review-video-sources
 ln -s ~/Workspace/review-video ~/.claude/skills/review-video
 cd ~/Workspace/review-video/template && npm install
 ```
