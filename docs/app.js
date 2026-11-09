@@ -145,6 +145,14 @@ const dropHtml = (id, text, big) => `<label class="drop ${big ? 'big' : ''}" id=
 </label>`;
 
 /* ---------- Trang danh sách ---------- */
+// Lưu bộ lọc/tab trên URL (?st=…, ?tab=…) để tải lại vẫn giữ
+const qp = (k) => new URLSearchParams(location.search).get(k);
+function setQp(k, v, def) {
+  const u = new URLSearchParams(location.search);
+  v && v !== def ? u.set(k, v) : u.delete(k);
+  const q = u.toString();
+  history.replaceState(null, '', location.pathname + (q ? '?' + q : '') + location.hash);
+}
 let filter = 'all';
 const isSample = (p) => p.type === 'sample';
 
@@ -158,12 +166,13 @@ async function renderListAsync() {
   }
   const list = Object.values(items).filter((p) => !isSample(p)).sort((a, b) => (b.updatedAt || '').localeCompare(a.updatedAt || ''));
   const tabs = [['all', 'Tất cả'], ...Object.entries(STATUS)];
+  filter = STATUS[qp('st')] ? qp('st') : 'all';
   const draw = () => {
     $('#tabs').innerHTML = tabs.map(([k, v]) => {
       const n = k === 'all' ? list.length : list.filter((i) => st(i) === k).length;
       return `<button data-k="${k}" aria-pressed="${filter === k}"><span class="k">${v}</span><span class="v">${n}</span></button>`;
     }).join('');
-    $('#tabs').querySelectorAll('button').forEach((b) => (b.onclick = () => { filter = b.dataset.k; draw(); }));
+    $('#tabs').querySelectorAll('button').forEach((b) => (b.onclick = () => { filter = b.dataset.k; setQp('st', filter, 'all'); draw(); }));
     const shown = list.filter((i) => filter === 'all' || st(i) === filter);
     $('#list').innerHTML = shown.length ? shown.map((p) => {
       const {sources, results} = split(p);
@@ -235,7 +244,7 @@ async function renderProduct(slug) {
   // Kết quả chỉ hiện bản mới nhất: 1 video + 1 ảnh bìa
   const newest = [...split(p).results].sort((a, b) => (b.uploaded || '').localeCompare(a.uploaded || ''));
   const results = [newest.find(isVideo), newest.find(isImage)].filter(Boolean);
-  const tab = tabOf[slug] || 'source';
+  const tab = ['source', 'result'].includes(qp('tab')) ? qp('tab') : 'source';
   const byId = Object.fromEntries((p.files || []).map((f) => [f.id, f]));
 
   app.innerHTML = `
@@ -268,6 +277,7 @@ async function renderProduct(slug) {
 
   app.querySelectorAll('[data-tab]').forEach((b) => (b.onclick = () => {
     tabOf[slug] = b.dataset.tab;
+    setQp('tab', b.dataset.tab, 'source');
     app.querySelectorAll('[data-tab]').forEach((x) => x.setAttribute('aria-selected', x === b));
     app.querySelectorAll('[data-panel]').forEach((x) => (x.hidden = x.dataset.panel !== b.dataset.tab));
   }));
@@ -371,6 +381,9 @@ document.addEventListener('click', (e) => {
 function route() {
   if (location.href.endsWith('#')) history.replaceState(null, '', location.pathname + location.search);
   const m = location.hash.match(/^#\/p\/(.+)$/);
+  // ?tab chỉ thuộc về sản phẩm đang mở: sang sản phẩm khác/trang khác thì bỏ
+  if (qp('tab') && 'slug' in route && (!m || m[1] !== route.slug)) setQp('tab');
+  route.slug = m && m[1];
   if (m) renderProduct(decodeURIComponent(m[1]));
   else if (location.hash === '#/he-thong' || location.hash === '#/mau') renderSamples();
   else renderList();
