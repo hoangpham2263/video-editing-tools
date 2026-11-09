@@ -25,7 +25,7 @@ Mở web → **Cài đặt** → nhập địa chỉ máy chủ và mã truy c�
 2. Trong `worker/`:
    ```bash
    npm install
-   npx wrangler r2 bucket create review-hub
+   npx wrangler r2 bucket create yooi
    npx wrangler secret put HUB_KEY      # dán mã truy cập
    npx wrangler deploy
    ```
