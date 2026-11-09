@@ -57,6 +57,6 @@ Web: https://hoangpham.is-a.dev/review-video/ (mã nguồn `docs/`, không cần
 - Up file: Worker mở phiên upload, trình duyệt/CLI gửi thẳng lên Google, giữ nguyên chất lượng, tối đa 5 GB/file.
 - Trạng thái (3): `new | done | posted` = Chờ edit / Đã edit / Đã đăng. Đẩy kết quả lên tự chuyển sang Đã edit.
 - Web chỉ hiện video và ảnh bìa kết quả mới nhất.
-- Video mẫu để phân tích style: sản phẩm `video-mau-thokunrw-phan-tich-style-o3e6`.
+- **Video mẫu** (phân tích style) lưu riêng: Drive `Tools Hub/Review Video/Video mẫu/<mã>/`, web tab "Video mẫu". `hub.mjs samples` liệt kê, `pull <mã>` tải về. Mẫu @thokunrw: `video-mau-thokunrw-phan-tich-style-o3e6`.
 
 `scripts/hub.mjs`: `list`, `show <mã>`, `create "<tên>" ["ghi chú"]`, `pull <mã> [thư-mục]`, `push <mã> <file...>` (kết quả), `push-source <mã> <file...>`, `status <mã> <trạng-thái>`.

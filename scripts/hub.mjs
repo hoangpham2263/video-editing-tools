@@ -27,7 +27,7 @@ const files = (p, kind) => (p.files || []).filter((f) => (kind === 'result' ? f.
 
 const cmds = {
   async list() {
-    const ps = await api('');
+    const ps = (await api('')).filter((p) => p.type !== 'sample');
     if (!ps.length) return console.log('Chưa có sản phẩm.');
     for (const p of ps) console.log(`${p.slug.padEnd(36)} ${STATUS[st(p)].padEnd(9)} ${files(p).length} source, ${files(p, 'result').length} kết quả  ${p.name}`);
   },
@@ -42,6 +42,19 @@ const cmds = {
   async create(name, note = '') {
     if (!name) die('Cần tên sản phẩm');
     console.log((await api('', {method: 'POST', json: {name, note}})).slug);
+  },
+  // Video mẫu: lưu riêng ở Drive "Review Video/Video mẫu/<mã>/"
+  async 'create-sample'(name, note = '') {
+    if (!name) die('Cần tên mẫu');
+    console.log((await api('', {method: 'POST', json: {name, note, type: 'sample'}})).slug);
+  },
+  async samples() {
+    for (const p of (await api('')).filter((p) => p.type === 'sample')) console.log(`${p.slug.padEnd(36)} ${(p.files || []).length} video  ${p.name}`);
+  },
+  async type(slug, t) {
+    if (!['product', 'sample'].includes(t)) die('Loại: product | sample');
+    await api(`/${slug}`, {method: 'PATCH', json: {type: t}});
+    console.log(`${slug}: ${t === 'sample' ? 'video mẫu' : 'sản phẩm'}`);
   },
   async status(slug, s) {
     if (!STATUS[s]) die(`Trạng thái: ${Object.keys(STATUS).join(' | ')}`);
@@ -99,7 +112,10 @@ if (!cmds[cmd]) {
   create "<tên>" ["ghi chú"]    tạo sản phẩm
   pull <mã> [thư-mục]           tải source về (mặc định work/<mã>/source)
   push <mã> <file...>           đẩy video/ảnh bìa kết quả, đặt "Đã edit"
-  push-source <mã> <file...>    up source từ máy
+  push-source <mã> <file...>    up source (hoặc video mẫu) từ máy
+  samples                       danh sách video mẫu
+  create-sample "<tên>"         tạo mục video mẫu
+  type <mã> <product|sample>    đổi loại (chuyển thư mục trên Drive)
   status <mã> <new|done|posted>   (Chờ edit | Đã edit | Đã đăng)`);
   process.exit(cmd ? 1 : 0);
 }

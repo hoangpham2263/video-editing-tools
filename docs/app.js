@@ -146,15 +146,20 @@ const dropHtml = (id, text, big) => `<label class="drop ${big ? 'big' : ''}" id=
 
 /* ---------- Trang danh sách ---------- */
 let filter = 'all';
+const isSample = (p) => p.type === 'sample';
+const navHtml = (cur) => `<div class="seg nav" role="tablist">
+  <a role="tab" href="#" aria-selected="${cur === 'product'}">Sản phẩm</a>
+  <a role="tab" href="#/mau" aria-selected="${cur === 'sample'}">Video mẫu</a>
+</div>`;
 function renderList() { renderListAsync(); }
 async function renderListAsync() {
-  app.innerHTML = `<div class="row between"><h1>Sản phẩm</h1><button class="primary" id="btnNew">+ Sản phẩm mới</button></div>
+  app.innerHTML = `${navHtml('product')}<div class="row between"><h1>Sản phẩm</h1><button class="primary" id="btnNew">+ Sản phẩm mới</button></div>
     <div class="tabs" id="tabs"></div><div class="list" id="list"><p class="empty">Đang tải…</p></div>`;
-  $('#btnNew').onclick = openNew;
+  $('#btnNew').onclick = () => openNew('product');
   if (!items) {
     try { await load(); } catch (e) { $('#list').innerHTML = `<p class="empty">${esc(e.message)}</p>`; return; }
   }
-  const list = Object.values(items).sort((a, b) => (b.updatedAt || '').localeCompare(a.updatedAt || ''));
+  const list = Object.values(items).filter((p) => !isSample(p)).sort((a, b) => (b.updatedAt || '').localeCompare(a.updatedAt || ''));
   const tabs = [['all', 'Tất cả'], ...Object.entries(STATUS)];
   const draw = () => {
     $('#tabs').innerHTML = tabs.map(([k, v]) => {
@@ -174,6 +179,44 @@ async function renderListAsync() {
   draw();
 }
 
+/* ---------- Video mẫu ---------- */
+async function renderSamples() {
+  app.innerHTML = `${navHtml('sample')}<div class="row between"><h1>Video mẫu</h1><button class="primary" id="btnNew">+ Mẫu mới</button></div>
+    <p class="meta" style="margin:-6px 0 0">Video tham khảo để phân tích style dựng, không phải sản phẩm cần làm.</p>
+    <div class="list" id="list"><p class="empty">Đang tải…</p></div>`;
+  $('#btnNew').onclick = () => openNew('sample');
+  if (!items) {
+    try { await load(); } catch (e) { $('#list').innerHTML = `<p class="empty">${esc(e.message)}</p>`; return; }
+  }
+  const list = Object.values(items).filter(isSample).sort((a, b) => (b.updatedAt || '').localeCompare(a.updatedAt || ''));
+  $('#list').innerHTML = list.length ? list.map((p) => `<a class="card item" href="#/p/${encodeURIComponent(p.slug)}">
+      <div class="name">${esc(p.name)}</div>
+      <div class="meta">${(p.files || []).length} video · cập nhật ${when(p.updatedAt)}</div>
+    </a>`).join('') : '<p class="empty">Chưa có video mẫu. Bấm "+ Mẫu mới" để thêm.</p>';
+}
+
+function renderSample(p) {
+  const files = [...(p.files || [])].sort((a, b) => a.name.localeCompare(b.name));
+  const byId = Object.fromEntries(files.map((f) => [f.id, f]));
+  app.innerHTML = `
+    <a class="back" href="#/mau">← Video mẫu</a>
+    <div class="p-head">
+      <div><h1>${esc(p.name)}</h1>${p.note ? `<p class="meta" style="margin:4px 0 0">${esc(p.note)}</p>` : ''}</div>
+      <div class="p-actions">
+        <button id="btnNote" class="small">Sửa ghi chú</button>
+        <button id="btnDel" class="small danger btn-danger">Xoá</button>
+      </div>
+    </div>
+    <section>
+      ${dropHtml('drop', 'Up video mẫu', !files.length)}
+      <div class="files" id="ups"></div>
+      ${files.length ? `<div class="results">${files.map((f) => mediaCard(f)).join('')}</div>` : ''}
+    </section>`;
+  dropZone($('#drop'), $('#drop input'), (fs) => uploadAll(p, fs, 'source'));
+  app.querySelectorAll('[data-play]').forEach((b) => (b.onclick = () => openPlayer(byId[b.dataset.play])));
+  bindCommon(p, p.slug, '#/mau');
+}
+
 /* ---------- Trang chi tiết ---------- */
 const tabOf = {}; // tab đang chọn của từng sản phẩm (giữ khi trang vẽ lại)
 async function renderProduct(slug) {
@@ -183,6 +226,7 @@ async function renderProduct(slug) {
   }
   const p = items[slug];
   if (!p) { app.innerHTML = `<a class="back" href="#">← Danh sách</a><p class="empty">Không tìm thấy sản phẩm.</p>`; return; }
+  if (isSample(p)) return renderSample(p);
   const {sources} = split(p);
   // Kết quả chỉ hiện bản mới nhất: 1 video + 1 ảnh bìa
   const newest = [...split(p).results].sort((a, b) => (b.uploaded || '').localeCompare(a.uploaded || ''));
@@ -229,18 +273,23 @@ async function renderProduct(slug) {
   app.querySelectorAll('[data-play]').forEach((b) => (b.onclick = () => openPlayer(byId[b.dataset.play])));
   // Video source không tải sẵn (29 file MOV nặng làm điện thoại giật), bấm vào mới phát
 
-  const patch = (json) => api(`/${p.slug}`, {method: 'PATCH', json});
   $('#status').onchange = async (e) => {
-    try { put(await patch({status: e.target.value})); toast('Đã đổi trạng thái'); renderProduct(slug); } catch (er) { toast(er.message); }
+    try { put(await api(`/${p.slug}`, {method: 'PATCH', json: {status: e.target.value}})); toast('Đã đổi trạng thái'); renderProduct(slug); } catch (er) { toast(er.message); }
   };
+  bindCommon(p, slug, '');
+}
+
+/** Sửa ghi chú, xoá sản phẩm/mẫu, xoá file — dùng chung cho sản phẩm và video mẫu */
+function bindCommon(p, slug, back) {
+  const patch = (json) => api(`/${p.slug}`, {method: 'PATCH', json});
   $('#btnNote').onclick = async () => {
     const f = await ask('Note', (f) => { f.note.value = p.note || ''; });
     if (!f) return;
     try { put(await patch({note: f.note.value})); toast('Đã lưu ghi chú'); renderProduct(slug); } catch (er) { toast(er.message); }
   };
   $('#btnDel').onclick = async () => {
-    if (!(await confirmDel(`Xoá "${p.name}"?`, 'Toàn bộ source và video vào thùng rác Google Drive, khôi phục được trong 30 ngày.'))) return;
-    try { await api(`/${p.slug}`, {method: 'DELETE'}); delete items[p.slug]; cache.set(items); toast('Đã xoá'); location.hash = ''; } catch (er) { toast(er.message); }
+    if (!(await confirmDel(`Xoá "${p.name}"?`, 'Toàn bộ video vào thùng rác Google Drive, khôi phục được trong 30 ngày.'))) return;
+    try { await api(`/${p.slug}`, {method: 'DELETE'}); delete items[p.slug]; cache.set(items); toast('Đã xoá'); location.hash = back; } catch (er) { toast(er.message); }
   };
   app.querySelectorAll('[data-del]').forEach((b) => (b.onclick = async () => {
     if (!(await confirmDel('Xoá file này?', `${b.dataset.name} sẽ vào thùng rác Google Drive.`))) return;
@@ -285,16 +334,21 @@ const onOk = {
     try {
       const name = f.querySelector('[name=name]').value.trim();
       toast('Đang tạo…');
-      const p = await api('', {method: 'POST', json: {name, note: f.note.value}});
+      const p = await api('', {method: 'POST', json: {name, note: f.note.value, type: f.dataset.type || 'product'}});
       put(p);
       f.reset();
       toast(`Đã tạo "${p.name}"`);
-      if (!location.hash.startsWith('#/p/')) renderList();
+      if (!location.hash.startsWith('#/p/')) route();
     } catch (e) { toast(e.message); }
   },
 };
-async function openNew() {
-  const f = await ask('New', (f) => f.reset());
+async function openNew(type = 'product') {
+  const f = await ask('New', (f) => {
+    f.reset();
+    f.dataset.type = type;
+    $('#dlgNew h2').textContent = type === 'sample' ? 'Video mẫu mới' : 'Sản phẩm mới';
+    f.querySelector('[name=name]').placeholder = type === 'sample' ? 'Mẫu @thokunrw' : 'Dép sục phối màu ZUTANIQ';
+  });
   if (f) onOk.New(f);
 }
 
@@ -302,6 +356,7 @@ async function openNew() {
 function route() {
   const m = location.hash.match(/^#\/p\/(.+)$/);
   if (m) renderProduct(decodeURIComponent(m[1]));
+  else if (location.hash === '#/mau') renderSamples();
   else renderList();
 }
 window.addEventListener('hashchange', route);
