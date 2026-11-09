@@ -18,14 +18,11 @@
 
   <dialog id="dlgSettings">
     <form method="dialog" id="formSettings">
-      <h2>Kết nối</h2>
-      <label>Địa chỉ máy chủ
-        <input name="url" type="url" required placeholder="https://yooi.xxx.workers.dev">
+      <h2>Đăng nhập GitHub</h2>
+      <label>Mã GitHub (token)
+        <input name="token" type="password" required autocomplete="off" placeholder="ghp_...">
       </label>
-      <label>Mã truy cập
-        <input name="key" type="password" required autocomplete="current-password">
-      </label>
-      <p class="hint">Mã chỉ lưu trong trình duyệt này.</p>
+      <p class="hint">Tạo ở github.com → Settings → Developer settings → Personal access tokens → Tokens (classic) → Generate, tick quyền <b>repo</b>. Tài khoản phải được mời vào repo dữ liệu. Mã chỉ lưu trong trình duyệt này.</p>
       <div class="row end actions">
         <button value="ok" class="primary">Lưu</button>
         <button value="cancel" class="ghost" formnovalidate>Huỷ</button>
@@ -50,7 +47,6 @@
   </dialog>
 
   <div id="toast" role="status" aria-live="polite"></div>
-  <script src="config.js"></script>
   <script src="app.js"></script>
 </body>
 </html>

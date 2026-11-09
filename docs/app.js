@@ -1,25 +1,22 @@
-// Review Hub – giao diện (GitHub Pages) gọi Worker API
-const STATUS = {
-  new: 'Chờ dựng',
-  editing: 'Đang dựng',
-  done: 'Có kết quả',
-  posted: 'Đã đăng',
-};
-const PART = 50 * 1024 * 1024; // mỗi phần tải lên 50MB (giới hạn Worker 100MB/request)
+// Review Hub – đọc/ghi GitHub Releases của repo dữ liệu.
+// Mỗi sản phẩm = 1 Release (tag = mã sản phẩm). File thường = source, file tên "KQ_..." = video kết quả.
+// Trạng thái lưu ở dòng đầu phần mô tả: <!-- status:new -->
+const REPO = 'hoangpham2263/review-video-sources';
+const STATUS = {new: 'Chờ dựng', editing: 'Đang dựng', done: 'Có kết quả', posted: 'Đã đăng'};
+const RESULT_PREFIX = 'KQ_';
 const $ = (s, el = document) => el.querySelector(s);
 const app = $('#app');
 
-const cfg = {
-  get url() { try { return (localStorage.getItem('hub.url') || window.HUB_DEFAULT_URL || '').replace(/\/+$/, ''); } catch { return window.HUB_DEFAULT_URL || ''; } },
-  get key() { try { return localStorage.getItem('hub.key') || ''; } catch { return ''; } },
-  save(url, key) { try { localStorage.setItem('hub.url', url); localStorage.setItem('hub.key', key); } catch {} },
+const store = {
+  get token() { try { return localStorage.getItem('hub.token') || ''; } catch { return ''; } },
+  set token(v) { try { localStorage.setItem('hub.token', v); } catch {} },
 };
 
 const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({'&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'}[c]));
 const size = (b) => (b > 1e9 ? (b / 1e9).toFixed(2) + ' GB' : b > 1e6 ? (b / 1e6).toFixed(1) + ' MB' : Math.max(1, Math.round(b / 1e3)) + ' KB');
 const when = (iso) => (iso ? new Date(iso).toLocaleString('vi-VN', {dateStyle: 'short', timeStyle: 'short'}) : '');
-const isVideo = (n) => /\.(mp4|mov|m4v|webm)$/i.test(n);
-const isImage = (n) => /\.(png|jpe?g|webp|heic|gif)$/i.test(n);
+const slugify = (s) => s.normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/đ/gi, 'd').toLowerCase()
+  .replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 40) || 'san-pham';
 
 function toast(msg) {
   const t = $('#toast');
@@ -29,71 +26,57 @@ function toast(msg) {
   toast.t = setTimeout(() => t.classList.remove('show'), 2600);
 }
 
-async function api(path, opts = {}) {
-  if (!cfg.url || !cfg.key) { openSettings(); throw new Error('Chưa kết nối'); }
-  const r = await fetch(cfg.url + path, {
+async function gh(path, opts = {}) {
+  if (!store.token) { openSettings(); throw new Error('Chưa nhập mã GitHub'); }
+  const r = await fetch(`https://api.github.com${path}`, {
     ...opts,
-    headers: {Authorization: `Bearer ${cfg.key}`, ...(opts.json ? {'Content-Type': 'application/json'} : {}), ...(opts.headers || {})},
-    body: opts.json ? JSON.stringify(opts.json) : opts.body,
+    headers: {
+      Authorization: `Bearer ${store.token}`,
+      Accept: 'application/vnd.github+json',
+      ...(opts.json ? {'Content-Type': 'application/json'} : {}),
+    },
+    body: opts.json ? JSON.stringify(opts.json) : undefined,
   });
-  const data = await r.json().catch(() => ({}));
-  if (r.status === 401) { openSettings(); throw new Error('Sai mã truy cập'); }
-  if (!r.ok) throw new Error(data.error || `Lỗi ${r.status}`);
-  return data;
+  if (r.status === 401) { openSettings(); throw new Error('Mã GitHub sai hoặc hết hạn'); }
+  if (r.status === 404) throw new Error('Không thấy. Tài khoản này đã được mời vào repo dữ liệu chưa?');
+  if (r.status === 204) return null;
+  const d = await r.json().catch(() => ({}));
+  if (!r.ok) throw new Error(d.message || `Lỗi ${r.status}`);
+  return d;
 }
 
-const signed = (slug, kind, name) => api('/api/sign', {method: 'POST', json: {slug, kind, name}}).then((d) => d.url);
-
-/** Tải 1 file lên theo từng phần, báo tiến độ qua onProgress(0..1) */
-async function uploadFile(slug, kind, file, onProgress) {
-  const base = `/api/upload/${slug}/${kind}/${encodeURIComponent(file.name)}`;
-  const {uploadId} = await api(`${base}?action=create&type=${encodeURIComponent(file.type || 'application/octet-stream')}`, {method: 'POST'});
-  const parts = [];
-  try {
-    const n = Math.max(1, Math.ceil(file.size / PART));
-    for (let i = 0; i < n; i++) {
-      const blob = file.slice(i * PART, Math.min(file.size, (i + 1) * PART));
-      let done = false, tries = 0;
-      while (!done) {
-        try {
-          const p = await putWithProgress(`${cfg.url}${base}?action=part&uploadId=${encodeURIComponent(uploadId)}&part=${i + 1}`, blob,
-            (loaded) => onProgress((i * PART + loaded) / file.size));
-          parts.push(p);
-          done = true;
-        } catch (e) {
-          if (++tries >= 3) throw e;
-          await new Promise((r) => setTimeout(r, 1500 * tries));
-        }
-      }
-    }
-    await api(`${base}?action=complete`, {method: 'POST', json: {uploadId, parts}});
-    onProgress(1);
-  } catch (e) {
-    api(`${base}?action=abort&uploadId=${encodeURIComponent(uploadId)}`, {method: 'DELETE'}).catch(() => {});
-    throw e;
-  }
+/** Tách release thành sản phẩm */
+function toProduct(rel) {
+  const body = rel.body || '';
+  const m = body.match(/<!--\s*status:(\w+)\s*-->/);
+  const note = body.replace(/<!--\s*status:\w+\s*-->\s*/g, '').trim();
+  const assets = (rel.assets || []).map((a) => ({
+    id: a.id, name: a.name, size: a.size, uploaded: a.updated_at, url: a.browser_download_url,
+  }));
+  return {
+    id: rel.id, slug: rel.tag_name, name: rel.name || rel.tag_name, note,
+    status: m?.[1] && STATUS[m[1]] ? m[1] : 'new',
+    sources: assets.filter((a) => !a.name.startsWith(RESULT_PREFIX)),
+    results: assets.filter((a) => a.name.startsWith(RESULT_PREFIX)),
+    createdAt: rel.created_at,
+    updatedAt: assets.reduce((t, a) => (a.uploaded > t ? a.uploaded : t), rel.created_at),
+    page: rel.html_url,
+    edit: `https://github.com/${REPO}/releases/edit/${encodeURIComponent(rel.tag_name)}`,
+  };
 }
-
-function putWithProgress(url, blob, onLoaded) {
-  return new Promise((resolve, reject) => {
-    const x = new XMLHttpRequest();
-    x.open('PUT', url);
-    x.setRequestHeader('Authorization', `Bearer ${cfg.key}`);
-    x.upload.onprogress = (e) => onLoaded(e.loaded);
-    x.onload = () => (x.status < 300 ? resolve(JSON.parse(x.responseText)) : reject(new Error(`Lỗi tải lên ${x.status}`)));
-    x.onerror = () => reject(new Error('Mất kết nối khi tải lên'));
-    x.send(blob);
-  });
-}
+const bodyOf = (status, note) => `<!-- status:${status} -->\n${note || ''}`.trim();
 
 /* ---------- Trang danh sách ---------- */
 let filter = 'all';
 async function renderList() {
-  app.innerHTML = `<div class="row between"><div><h1>Sản phẩm</h1><p class="meta" style="margin:4px 0 0">Người quay up source, người dựng trả video kết quả.</p></div><button class="primary" id="btnNew">+ Sản phẩm mới</button></div>
+  app.innerHTML = `<div class="row between"><div><h1>Sản phẩm</h1><p class="meta" style="margin:4px 0 0">Người quay up source, người dựng trả video kết quả. Lưu trên GitHub Releases.</p></div><button class="primary" id="btnNew">+ Sản phẩm mới</button></div>
     <div class="tabs" id="tabs"></div><div class="list" id="list"><p class="empty">Đang tải…</p></div>`;
   $('#btnNew').onclick = () => $('#dlgNew').showModal();
   let items = [];
-  try { items = await api('/api/products'); } catch (e) { $('#list').innerHTML = `<p class="empty">${esc(e.message)}</p>`; return; }
+  try {
+    items = (await gh(`/repos/${REPO}/releases?per_page=100`)).map(toProduct)
+      .sort((a, b) => (b.updatedAt || '').localeCompare(a.updatedAt || ''));
+  } catch (e) { $('#list').innerHTML = `<p class="empty">${esc(e.message)}</p>`; return; }
   const tabs = [['all', 'Tất cả'], ...Object.entries(STATUS)];
   const draw = () => {
     $('#tabs').innerHTML = tabs.map(([k, v]) => {
@@ -102,11 +85,13 @@ async function renderList() {
     }).join('');
     $('#tabs').querySelectorAll('button').forEach((b) => (b.onclick = () => { filter = b.dataset.k; draw(); }));
     const shown = items.filter((i) => filter === 'all' || i.status === filter);
-    $('#list').innerHTML = shown.length ? shown.map((p) => `
-      <a class="card item" href="#/p/${encodeURIComponent(p.slug)}">
-        <div class="row between"><span class="name">${esc(p.name)}</span><span class="badge s-${p.status}">${STATUS[p.status] || p.status}</span></div>
-        <div class="meta">${p.counts.source} source · ${p.counts.result} video kết quả · ${size(p.counts.bytes)} · ${when(p.updatedAt)}</div>
-      </a>`).join('') : `<p class="empty">Chưa có sản phẩm nào.</p>`;
+    $('#list').innerHTML = shown.length ? shown.map((p) => {
+      const bytes = [...p.sources, ...p.results].reduce((s, a) => s + a.size, 0);
+      return `<a class="card item" href="#/p/${encodeURIComponent(p.slug)}">
+        <div class="row between"><span class="name">${esc(p.name)}</span><span class="badge s-${p.status}">${STATUS[p.status]}</span></div>
+        <div class="meta">${p.sources.length} source · ${p.results.length} video kết quả · ${size(bytes)} · ${when(p.updatedAt)}</div>
+      </a>`;
+    }).join('') : `<p class="empty">Chưa có sản phẩm nào.</p>`;
   };
   draw();
 }
@@ -115,7 +100,12 @@ async function renderList() {
 async function renderProduct(slug) {
   app.innerHTML = `<p class="empty">Đang tải…</p>`;
   let p;
-  try { p = await api(`/api/products/${slug}`); } catch (e) { app.innerHTML = `<a class="back" href="#">← Danh sách</a><p class="empty">${esc(e.message)}</p>`; return; }
+  try { p = toProduct(await gh(`/repos/${REPO}/releases/tags/${encodeURIComponent(slug)}`)); }
+  catch (e) { app.innerHTML = `<a class="back" href="#">← Danh sách</a><p class="empty">${esc(e.message)}</p>`; return; }
+
+  const fileRow = (f, label) => `
+    <div class="card file"><div><div class="fname">${esc(label ?? f.name)}</div><div class="meta">${size(f.size)} · ${when(f.uploaded)}</div></div>
+    <div class="row"><a class="btn small" href="${esc(f.url)}">Tải về</a><button class="small ghost danger" data-del="${f.id}" data-name="${esc(f.name)}">Xoá</button></div></div>`;
 
   app.innerHTML = `
     <a class="back" href="#">← Danh sách</a>
@@ -127,133 +117,74 @@ async function renderProduct(slug) {
         <label style="margin:0;flex:1;min-width:160px">
           <select id="status">${Object.entries(STATUS).map(([k, v]) => `<option value="${k}" ${k === p.status ? 'selected' : ''}>${v}</option>`).join('')}</select>
         </label>
-        <button id="btnNote" class="ghost small">Sửa ghi chú</button>
-        <button id="btnDel" class="ghost small danger">Xoá sản phẩm</button>
+        <button id="btnNote" class="small">Sửa ghi chú</button>
+        <a class="btn small" href="${esc(p.page)}" target="_blank" rel="noopener">Mở trên GitHub</a>
+        <button id="btnDel" class="small ghost danger">Xoá sản phẩm</button>
       </div>
     </div>
 
     <section>
-      <div class="row between"><h2>Video kết quả (${p.files.result.length})</h2>
-        <button class="small" data-pick="result">+ Tải kết quả lên</button></div>
-      <div class="results" id="results">${p.files.result.length ? '' : '<p class="meta">Chưa có video kết quả.</p>'}</div>
-      <div class="files" id="up-result"></div>
+      <h2>Video kết quả (${p.results.length})</h2>
+      <div class="files">${p.results.map((f) => fileRow(f, f.name.slice(RESULT_PREFIX.length))).join('') || '<p class="meta">Chưa có video kết quả.</p>'}</div>
     </section>
 
     <section>
-      <div class="row between"><h2>Source (${p.files.source.length})</h2>
-        <button class="small ghost" id="btnAllSrc" ${p.files.source.length ? '' : 'disabled'}>Tải tất cả</button></div>
-      <div class="drop" id="drop">Chọn hoặc kéo thả video/ảnh quay sản phẩm vào đây<br><span class="meta">Có thể chọn nhiều file, file lớn vẫn được</span></div>
-      <div class="files" id="up-source"></div>
-      <div class="files" id="sources"></div>
-    </section>
-    <input type="file" id="pick" multiple hidden accept="video/*,image/*">`;
+      <h2>Source (${p.sources.length})</h2>
+      <a class="drop" href="${esc(p.edit)}" target="_blank" rel="noopener" style="display:block;text-decoration:none">
+        <strong style="color:var(--foreground)">Up source trên GitHub</strong><br>
+        Mở trang sửa Release → kéo thả video vào ô "Attach binaries" → bấm "Update release".<br>
+        <span class="meta">Mỗi file tối đa 2 GB, giữ nguyên chất lượng. Dùng được trên điện thoại.</span>
+      </a>
+      <div class="files">${p.sources.map((f) => fileRow(f)).join('')}</div>
+    </section>`;
 
+  const patch = (status, note) => gh(`/repos/${REPO}/releases/${p.id}`, {method: 'PATCH', json: {body: bodyOf(status, note)}});
   $('#status').onchange = async (e) => {
-    try { await api(`/api/products/${slug}`, {method: 'PATCH', json: {status: e.target.value}}); toast('Đã đổi trạng thái'); } catch (er) { toast(er.message); }
+    try { await patch(e.target.value, p.note); toast('Đã đổi trạng thái'); renderProduct(slug); } catch (er) { toast(er.message); }
   };
   $('#btnNote').onclick = async () => {
     const note = prompt('Ghi chú cho người dựng', p.note || '');
     if (note === null) return;
-    await api(`/api/products/${slug}`, {method: 'PATCH', json: {note}});
-    renderProduct(slug);
+    try { await patch(p.status, note); renderProduct(slug); } catch (er) { toast(er.message); }
   };
   $('#btnDel').onclick = async () => {
     if (!confirm(`Xoá hẳn "${p.name}" cùng toàn bộ source và video? Không khôi phục được.`)) return;
-    await api(`/api/products/${slug}`, {method: 'DELETE'});
-    toast('Đã xoá');
-    location.hash = '';
+    try {
+      await gh(`/repos/${REPO}/releases/${p.id}`, {method: 'DELETE'});
+      await gh(`/repos/${REPO}/git/refs/tags/${encodeURIComponent(p.slug)}`, {method: 'DELETE'}).catch(() => {});
+      toast('Đã xoá');
+      location.hash = '';
+    } catch (er) { toast(er.message); }
   };
-
-  // Kết quả: xem trước + tải về
-  const results = $('#results');
-  for (const f of p.files.result) {
-    const card = document.createElement('div');
-    card.className = 'card result';
-    card.innerHTML = `<div class="ph" style="aspect-ratio:9/16;border-radius:10px;background:var(--line)"></div>
-      <div class="fname meta" style="margin-top:6px;word-break:break-all">${esc(f.name)} · ${size(f.size)}</div>
-      <div class="row"><a class="btn primary small" data-dl>Tải về</a><button class="small ghost danger" data-del>Xoá</button></div>`;
-    results.append(card);
-    signed(slug, 'result', f.name).then((url) => {
-      const ph = card.querySelector('.ph');
-      if (isVideo(f.name)) ph.outerHTML = `<video src="${esc(url)}" controls playsinline preload="metadata"></video>`;
-      else if (isImage(f.name)) ph.outerHTML = `<img src="${esc(url)}" alt="${esc(f.name)}" loading="lazy">`;
-      card.querySelector('[data-dl]').href = url;
-    });
-    card.querySelector('[data-del]').onclick = () => delFile(slug, 'result', f.name);
-  }
-
-  // Source: danh sách
-  $('#sources').innerHTML = p.files.source.map((f, i) => `
-    <div class="card file"><div><div class="fname">${esc(f.name)}</div><div class="meta">${size(f.size)} · ${when(f.uploaded)}</div></div>
-    <div class="row"><button class="small" data-i="${i}" data-act="dl">Tải</button><button class="small ghost danger" data-i="${i}" data-act="del">Xoá</button></div></div>`).join('');
-  $('#sources').querySelectorAll('button').forEach((b) => {
-    const f = p.files.source[b.dataset.i];
-    b.onclick = async () => (b.dataset.act === 'dl' ? (location.href = await signed(slug, 'source', f.name)) : delFile(slug, 'source', f.name));
-  });
-  $('#btnAllSrc').onclick = async () => {
-    for (const f of p.files.source) {
-      const a = Object.assign(document.createElement('a'), {href: await signed(slug, 'source', f.name), download: f.name});
-      document.body.append(a); a.click(); a.remove();
-      await new Promise((r) => setTimeout(r, 800));
-    }
-  };
-
-  // Tải lên
-  let pickKind = 'source';
-  const pick = $('#pick');
-  const startUpload = async (files, kind) => {
-    const box = $(`#up-${kind}`);
-    for (const file of files) {
-      const row = document.createElement('div');
-      row.className = 'card file';
-      row.innerHTML = `<div><div class="fname">${esc(file.name)}</div><div class="meta"><span>0%</span> · ${size(file.size)}</div><div class="bar"><i></i></div></div><span></span>`;
-      box.append(row);
-      try {
-        await uploadFile(slug, kind, file, (r) => {
-          row.querySelector('.bar i').style.width = `${Math.round(r * 100)}%`;
-          row.querySelector('.meta span').textContent = `${Math.round(r * 100)}%`;
-        });
-        row.lastElementChild.textContent = '✓';
-      } catch (e) {
-        row.lastElementChild.textContent = 'Lỗi';
-        toast(`${file.name}: ${e.message}`);
-      }
-    }
-    toast('Tải lên xong');
-    renderProduct(slug);
-  };
-  $('#drop').onclick = () => { pickKind = 'source'; pick.click(); };
-  document.querySelector('[data-pick="result"]').onclick = () => { pickKind = 'result'; pick.click(); };
-  pick.onchange = () => { if (pick.files.length) startUpload([...pick.files], pickKind); pick.value = ''; };
-  const drop = $('#drop');
-  drop.ondragover = (e) => { e.preventDefault(); drop.classList.add('over'); };
-  drop.ondragleave = () => drop.classList.remove('over');
-  drop.ondrop = (e) => { e.preventDefault(); drop.classList.remove('over'); startUpload([...e.dataTransfer.files], 'source'); };
-}
-
-async function delFile(slug, kind, name) {
-  if (!confirm(`Xoá file "${name}"? Không khôi phục được.`)) return;
-  try { await api(`/api/products/${slug}/${kind}/${encodeURIComponent(name)}`, {method: 'DELETE'}); toast('Đã xoá'); renderProduct(slug); } catch (e) { toast(e.message); }
+  app.querySelectorAll('[data-del]').forEach((b) => (b.onclick = async () => {
+    if (!confirm(`Xoá file "${b.dataset.name}"? Không khôi phục được.`)) return;
+    try { await gh(`/repos/${REPO}/releases/assets/${b.dataset.del}`, {method: 'DELETE'}); toast('Đã xoá'); renderProduct(slug); }
+    catch (er) { toast(er.message); }
+  }));
 }
 
 /* ---------- Hộp thoại ---------- */
 function openSettings() {
-  const f = $('#formSettings');
-  f.url.value = cfg.url;
-  f.key.value = cfg.key;
+  $('#formSettings').token.value = store.token;
   if (!$('#dlgSettings').open) $('#dlgSettings').showModal();
 }
-// Bấm nút chính hoặc Enter: xử lý luôn (không chờ sự kiện "close" vì có trình duyệt gửi trễ)
 const onOk = {
   async Settings(f) {
-    cfg.save(f.url.value.trim().replace(/\/+$/, ''), f.key.value.trim());
-    try { await api('/api/ping'); toast('Đã kết nối'); route(); } catch (e) { toast(e.message); }
+    store.token = f.token.value.trim();
+    try {
+      const r = await fetch('https://api.github.com/user', {headers: {Authorization: `Bearer ${store.token}`}});
+      const u = await r.json();
+      toast(r.ok ? `Đã đăng nhập: ${u.login}` : 'Mã GitHub không hợp lệ');
+      route();
+    } catch (e) { toast(e.message); }
   },
   async New(f) {
+    const name = f.querySelector('[name=name]').value.trim();
+    const tag = `${slugify(name)}-${Date.now().toString(36).slice(-4)}`;
     try {
-      const p = await api('/api/products', {method: 'POST', json: {name: f.querySelector('[name=name]').value, note: f.note.value}});
+      await gh(`/repos/${REPO}/releases`, {method: 'POST', json: {tag_name: tag, target_commitish: 'main', name, body: bodyOf('new', f.note.value)}});
       f.reset();
-      location.hash = `#/p/${encodeURIComponent(p.slug)}`;
+      location.hash = `#/p/${encodeURIComponent(tag)}`;
     } catch (e) { toast(e.message); }
   },
 };
@@ -274,5 +205,5 @@ function route() {
   else renderList();
 }
 window.addEventListener('hashchange', route);
-if (!cfg.url || !cfg.key) openSettings();
+if (!store.token) openSettings();
 route();

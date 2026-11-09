@@ -1,9 +1,0 @@
-name = "yooi"
-main = "src/index.js"
-compatibility_date = "2024-11-01"
-
-[[r2_buckets]]
-binding = "BUCKET"
-bucket_name = "yooi"
-
-# Mã truy cập: npx wrangler secret put HUB_KEY

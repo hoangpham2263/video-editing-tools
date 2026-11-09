@@ -51,16 +51,13 @@ Người dùng sửa gì thì sửa `cuts.txt`/`json`, cắt lại đúng clip �
 
 ## Review Hub
 
-Web cho bạn quay và người dựng dùng chung: https://hoangpham.is-a.dev/review-video/ (mã nguồn: `docs/` và `worker/` trong skill này).
+Web: https://hoangpham.is-a.dev/review-video/ (mã nguồn `docs/`). Dữ liệu nằm ở **GitHub Releases** của repo riêng tư `hoangpham2263/review-video-sources`:
 
-- Người quay: tạo sản phẩm (tên + ghi chú) → tải source lên.
-- Người dựng (skill này): `pull` source → dựng → `push` kết quả.
-- Người quay: tải video kết quả về để đăng → bấm "Đã đăng".
+- Mỗi sản phẩm = 1 Release, tag = mã sản phẩm (slug).
+- File thường trong Release = **source** (người quay kéo thả vào trang sửa Release, tối đa 2 GB/file, giữ nguyên chất lượng).
+- File tên `KQ_...` = **video kết quả** do skill đẩy lên.
+- Trạng thái ở dòng đầu mô tả Release: `<!-- status:new|editing|done|posted -->` (Chờ dựng / Đang dựng / Có kết quả / Đã đăng).
 
-`scripts/hub.mjs` đọc cấu hình từ `~/.config/review-hub.json`:
+Người quay cần tài khoản GitHub được mời vào repo dữ liệu. Web dùng mã GitHub (token classic, quyền `repo`) lưu trong trình duyệt.
 
-```json
-{"url": "https://yooi.<tài-khoản>.workers.dev", "key": "<mã truy cập>"}
-```
-
-Lệnh: `list`, `show <slug>`, `create "<tên>"`, `pull <slug> [thư-mục]`, `push <slug> <file...>`, `status <slug> <new|editing|done|posted>`.
+`scripts/hub.mjs` dùng `gh` đã đăng nhập: `list`, `show <slug>`, `create "<tên>" ["ghi chú"]`, `pull <slug> [thư-mục]`, `push <slug> <file...>`, `status <slug> <new|editing|done|posted>`.
