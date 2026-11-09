@@ -183,3 +183,14 @@ details.card > summary::before { content: "▸"; display: inline-block; width: 1
 details.card[open] > summary::before { transform: rotate(90deg); }
 
 .small-select { height: 32px; width: auto; font-size: 13px; }
+
+/* Ô nhập: không viền, không bóng, không outline mặc định; chỉ hiện viền khi đang focus */
+input, textarea, select {
+  border: 1px solid transparent; background-color: var(--muted); box-shadow: none; outline: none;
+  -webkit-appearance: none; appearance: none; transition: border-color .15s, background-color .15s;
+}
+input:focus, textarea:focus, select:focus,
+input:focus-visible, textarea:focus-visible, select:focus-visible {
+  border-color: var(--foreground); background-color: var(--background); box-shadow: none; outline: none;
+}
+button:focus, .btn:focus { outline: none; }
