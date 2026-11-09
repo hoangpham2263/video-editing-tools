@@ -49,7 +49,7 @@ Người dùng sửa gì thì sửa `cuts.txt`/`json`, cắt lại đúng clip �
 
 ## Review Hub
 
-Web cho bạn quay và người dựng dùng chung: https://hoangpham.is-a.dev/review-hub/ (mã nguồn: repo `review-hub`).
+Web cho bạn quay và người dựng dùng chung: https://hoangpham.is-a.dev/review-video/ (mã nguồn: `docs/` và `worker/` trong skill này).
 
 - Người quay: tạo sản phẩm (tên + ghi chú) → tải source lên.
 - Người dựng (skill này): `pull` source → dựng → `push` kết quả.

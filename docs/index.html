@@ -1,0 +1,56 @@
+<!doctype html>
+<html lang="vi">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Review Hub</title>
+  <meta name="robots" content="noindex">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'><rect width='64' height='64' rx='16' fill='%23e8478c'/><path d='M26 20l20 12-20 12z' fill='%23fff'/></svg>">
+  <link rel="stylesheet" href="app.css">
+</head>
+<body>
+  <header class="top">
+    <a href="#" class="brand"><span class="logo">▶</span> Review Hub</a>
+    <button id="btnSettings" class="ghost" title="Cài đặt">Cài đặt</button>
+  </header>
+
+  <main id="app"></main>
+
+  <dialog id="dlgSettings">
+    <form method="dialog" id="formSettings">
+      <h2>Kết nối</h2>
+      <label>Địa chỉ máy chủ
+        <input name="url" type="url" required placeholder="https://review-hub.xxx.workers.dev">
+      </label>
+      <label>Mã truy cập
+        <input name="key" type="password" required autocomplete="current-password">
+      </label>
+      <p class="hint">Mã chỉ lưu trong trình duyệt này.</p>
+      <div class="row end actions">
+        <button value="ok" class="primary">Lưu</button>
+        <button value="cancel" class="ghost" formnovalidate>Huỷ</button>
+      </div>
+    </form>
+  </dialog>
+
+  <dialog id="dlgNew">
+    <form method="dialog" id="formNew">
+      <h2>Sản phẩm mới</h2>
+      <label>Tên sản phẩm
+        <input name="name" required maxlength="120" placeholder="Dép sục phối màu ZUTANIQ">
+      </label>
+      <label>Ghi chú cho người dựng
+        <textarea name="note" rows="4" placeholder="Màu, thương hiệu, điểm nổi bật, deal, link sản phẩm..."></textarea>
+      </label>
+      <div class="row end actions">
+        <button value="ok" class="primary">Tạo</button>
+        <button value="cancel" class="ghost" formnovalidate>Huỷ</button>
+      </div>
+    </form>
+  </dialog>
+
+  <div id="toast" role="status" aria-live="polite"></div>
+  <script src="config.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>

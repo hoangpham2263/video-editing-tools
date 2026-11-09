@@ -8,7 +8,7 @@ Skill Claude Code dựng video review sản phẩm TikTok Shop theo style @thoku
 
 - Các bước của AI: [SKILL.md](SKILL.md)
 - Quy tắc dựng (đã thống nhất): [references/rules.md](references/rules.md)
-- Web cho người quay up source / tải kết quả: [review-hub](https://github.com/hoangpham2263/review-hub)
+- Web cho người quay up source / tải kết quả: https://hoangpham.is-a.dev/review-video/ (mã: `docs/`, máy chủ: `worker/`, hướng dẫn: [references/hub.md](references/hub.md))
 
 ## Cài lần đầu
 
