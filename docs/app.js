@@ -117,6 +117,37 @@ async function openPlayer(id, name, label) {
 }
 $('#dlgPlay').addEventListener('close', () => $('#playVideo').pause());
 
+/* ---------- Up source qua worker ---------- */
+const MAX_UP = 100 * 1024 * 1024;
+function uploadOne(releaseId, file, onProgress) {
+  return new Promise((resolve, reject) => {
+    const x = new XMLHttpRequest();
+    x.open('POST', `${LINK_API}/upload/${releaseId}?name=${encodeURIComponent(file.name)}`);
+    x.setRequestHeader('Authorization', `Bearer ${store.token}`);
+    x.setRequestHeader('Content-Type', file.type || 'application/octet-stream');
+    x.upload.onprogress = (e) => e.lengthComputable && onProgress(e.loaded / e.total);
+    x.onload = () => { let d = {}; try { d = JSON.parse(x.responseText); } catch {} x.status < 300 ? resolve(d) : reject(new Error(d.error || `Lỗi ${x.status}`)); };
+    x.onerror = () => reject(new Error('Mất kết nối'));
+    x.send(file);
+  });
+}
+async function uploadAll(p, files, slug) {
+  const box = $('#ups');
+  let ok = 0;
+  for (const f of files) {
+    const row = document.createElement('div');
+    row.className = 'card file';
+    row.innerHTML = `<div><div class="fname">${esc(f.name)}</div><div class="meta">${size(f.size)} · <span class="st">Đang up…</span></div><div class="bar"><i></i></div></div>`;
+    box.append(row);
+    const st = row.querySelector('.st'), bar = row.querySelector('.bar i');
+    if (f.size > MAX_UP) { st.textContent = 'Quá 100 MB, hãy quay/cắt ngắn hơn'; st.classList.add('danger'); continue; }
+    if (p.sources.some((s) => s.name === f.name)) { st.textContent = 'Đã có file trùng tên'; st.classList.add('danger'); continue; }
+    try { await uploadOne(p.id, f, (r) => (bar.style.width = `${Math.round(r * 100)}%`)); st.textContent = 'Xong'; ok++; }
+    catch (e) { st.textContent = e.message; st.classList.add('danger'); }
+  }
+  if (ok) { toast(`Đã up ${ok} file`); renderProduct(slug); }
+}
+
 /* ---------- Trang danh sách ---------- */
 let filter = 'all';
 async function renderList() {
@@ -165,7 +196,6 @@ async function renderProduct(slug) {
           <select id="status">${Object.entries(STATUS).map(([k, v]) => `<option value="${k}" ${k === p.status ? 'selected' : ''}>${v}</option>`).join('')}</select>
         </label>
         <button id="btnNote" class="small">Sửa ghi chú</button>
-        <a class="btn small" href="${esc(p.page)}" target="_blank" rel="noopener">Mở trên GitHub</a>
         <button id="btnDel" class="small ghost danger">Xoá sản phẩm</button>
       </div>
     </div>
@@ -177,13 +207,20 @@ async function renderProduct(slug) {
 
     <section>
       <h2>Source (${p.sources.length})</h2>
-      <a class="drop" href="${esc(p.edit)}" target="_blank" rel="noopener" style="display:block;text-decoration:none">
-        <strong style="color:var(--foreground)">Up source trên GitHub</strong><br>
-        Mở trang sửa Release → kéo thả video vào ô "Attach binaries" → bấm "Update release".<br>
-        <span class="meta">Mỗi file tối đa 2 GB, giữ nguyên chất lượng. Dùng được trên điện thoại.</span>
-      </a>
+      <label class="drop" id="drop" style="display:block;margin:0">
+        <input type="file" id="pick" multiple accept="video/*,image/*" hidden>
+        <strong style="color:var(--foreground)">Bấm để chọn hoặc kéo thả video vào đây</strong><br>
+        <span class="meta">Giữ nguyên chất lượng gốc. Tối đa 100 MB mỗi file. Dùng được trên điện thoại.</span>
+      </label>
+      <div class="files" id="ups"></div>
       ${p.sources.length ? `<div class="results">${p.sources.map((f) => mediaCard(f, f.name)).join('')}</div>` : ''}
     </section>`;
+
+  const pick = $('#pick'), drop = $('#drop');
+  pick.onchange = () => uploadAll(p, [...pick.files], slug);
+  drop.ondragover = (e) => { e.preventDefault(); drop.classList.add('over'); };
+  drop.ondragleave = () => drop.classList.remove('over');
+  drop.ondrop = (e) => { e.preventDefault(); drop.classList.remove('over'); uploadAll(p, [...e.dataTransfer.files], slug); };
 
   const patch = (status, note) => gh(`/repos/${REPO}/releases/${p.id}`, {method: 'PATCH', json: {body: bodyOf(status, note)}});
   $('#status').onchange = async (e) => {
