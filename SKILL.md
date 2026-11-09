@@ -60,7 +60,7 @@ Web cho bạn quay và người dựng dùng chung: https://hoangpham.is-a.dev/r
 `scripts/hub.mjs` đọc cấu hình từ `~/.config/review-hub.json`:
 
 ```json
-{"url": "https://review-hub.<tài-khoản>.workers.dev", "key": "<mã truy cập>"}
+{"url": "https://yooi.<tài-khoản>.workers.dev", "key": "<mã truy cập>"}
 ```
 
 Lệnh: `list`, `show <slug>`, `create "<tên>"`, `pull <slug> [thư-mục]`, `push <slug> <file...>`, `status <slug> <new|editing|done|posted>`.

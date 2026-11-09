@@ -23,7 +23,7 @@ cd ~/Workspace/review-video/template && npm install
 Cần: Node 20+, ffmpeg, Python 3 (numpy, scipy nếu tạo nhạc). Kết nối Hub: tạo `~/.config/review-hub.json`:
 
 ```json
-{"url": "https://review-hub.<tài-khoản>.workers.dev", "key": "<mã truy cập>"}
+{"url": "https://yooi.<tài-khoản>.workers.dev", "key": "<mã truy cập>"}
 ```
 
 ## Lệnh Hub
