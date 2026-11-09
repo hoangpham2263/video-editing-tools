@@ -70,12 +70,26 @@ function mediaCard(f, poster) {
   const media = isVideo(f) || isImage(f);
   return `<div class="card result">
     ${media ? `<button class="thumb" data-play="${esc(f.id)}" aria-label="Xem ${esc(f.name)}">
-      ${isImage(f) ? `<img src="${esc(f.url)}" alt="" loading="lazy">` : (poster ? `<img src="${esc(poster)}" alt="" loading="lazy">` : `<span class="ext">${esc((f.name.split('.').pop() || '').toUpperCase())}</span>`)}
+      ${isImage(f) ? `<img src="${esc(f.url)}" alt="" loading="lazy">` : (poster ? `<img src="${esc(poster)}" alt="" loading="lazy">` : `<video class="pv" data-src="${esc(f.url)}#t=0.5" muted playsinline preload="none"></video><span class="ext">${esc((f.name.split('.').pop() || '').toUpperCase())}</span>`)}
       <span class="play">${isVideo(f) ? '▶' : '⤢'}</span></button>` : ''}
     <div><div class="fname">${esc(label(f))}</div><div class="meta">${size(f.size)} · ${when(f.uploaded)}</div></div>
     <div class="row"><a class="btn small ${f.kind === 'result' ? 'primary' : ''}" href="${esc(f.download)}">Tải về</a><button class="small ghost danger" title="Xoá file" data-del="${esc(f.id)}" data-name="${esc(f.name)}">Xoá</button></div>
   </div>`;
 }
+
+// Ảnh xem trước source: khi thẻ cuộn tới mới tải khung đầu (tối đa 3 video cùng lúc)
+const pvQ = []; let pvN = 0;
+const pvNext = () => {
+  while (pvN < 3 && pvQ.length) {
+    const v = pvQ.shift(); if (!v.isConnected) continue; pvN++;
+    const done = () => { if (v._d) return; v._d = 1; pvN--; pvNext(); };
+    v.addEventListener('loadeddata', () => { v.classList.add('on'); done(); }, {once: true});
+    v.addEventListener('error', done, {once: true}); setTimeout(done, 15000);
+    v.preload = 'metadata'; v.src = v.dataset.src;
+  }
+};
+const pvIO = new IntersectionObserver((es) => es.forEach((e) => { if (e.isIntersecting) { pvIO.unobserve(e.target); pvQ.push(e.target); pvNext(); } }), {rootMargin: '200px'});
+new MutationObserver(() => document.querySelectorAll('video.pv:not([data-o])').forEach((v) => { v.dataset.o = 1; pvIO.observe(v); })).observe(document.getElementById('app'), {childList: true, subtree: true});
 
 function openPlayer(f) {
   const v = $('#playVideo'), im = $('#playImg');

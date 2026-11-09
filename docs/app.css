@@ -291,3 +291,5 @@ input:focus-visible, textarea:focus-visible, select:focus-visible { border-color
 .menu-list a { padding: 8px 10px; border-radius: 6px; font-size: 14px; color: var(--foreground); text-decoration: none; }
 .menu-list a:hover, .menu-list a:focus-visible { background: var(--muted); outline: none; }
 .menu-list a[aria-current] { font-weight: 600; }
+.thumb video.pv { opacity: 0; transition: opacity .2s; pointer-events: none; }
+.thumb video.pv.on { opacity: 1; }
