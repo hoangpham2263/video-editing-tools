@@ -159,7 +159,10 @@ async function renderProduct(slug) {
   let p;
   try { p = await api(`/${encodeURIComponent(slug)}`); }
   catch (e) { app.innerHTML = `<a class="back" href="#">← Danh sách</a><p class="empty">${esc(e.message)}</p>`; return; }
-  const {sources, results} = split(p);
+  const {sources} = split(p);
+  // Kết quả chỉ hiện bản mới nhất: 1 video + 1 ảnh bìa
+  const newest = [...split(p).results].sort((a, b) => (b.uploaded || '').localeCompare(a.uploaded || ''));
+  const results = [newest.find(isVideo), newest.find(isImage)].filter(Boolean);
   const byId = Object.fromEntries((p.files || []).map((f) => [f.id, f]));
 
   app.innerHTML = `
