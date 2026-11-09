@@ -201,3 +201,5 @@ details.card > summary::before { content: "▸"; display: inline-block; width: 1
 details.card[open] > summary::before { transform: rotate(90deg); }
 .guide-steps { margin: 12px 0 0; padding-left: 20px; display: grid; gap: 8px; }
 .guide-steps li span { display: block; color: var(--muted-foreground); font-size: 13px; }
+
+.small-select { height: 32px; width: auto; font-size: 13px; }
