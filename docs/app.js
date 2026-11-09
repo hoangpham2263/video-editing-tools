@@ -278,9 +278,9 @@ async function renderProduct(slug) {
     </div>
 
     <section data-panel="result" ${tab === 'result' ? '' : 'hidden'}>
-      ${results.length ? `<div class="results">${results.map((f) => mediaCard(f, isVideo(f) ? newest.find(isImage)?.url : '')).join('')}</div>` : '<p class="empty small">Chưa có kết quả.</p>'}
-      ${dropHtml('dropResult', 'Up kết quả', false)}
+      ${dropHtml('dropResult', 'Up kết quả', !results.length)}
       <div class="files" id="upsResult"></div>
+      ${results.length ? `<div class="results">${results.map((f) => mediaCard(f, isVideo(f) ? newest.find(isImage)?.url : '')).join('')}</div>` : '<p class="empty small">Chưa có kết quả.</p>'}
     </section>
 
     <section data-panel="source" ${tab === 'source' ? '' : 'hidden'}>
