@@ -241,10 +241,12 @@ button:focus, .btn:focus { outline: none; }
   .player .close { top: calc(10px + env(safe-area-inset-top)); right: 10px; height: 40px; width: 40px; }
   .player-bar { margin: 0; padding: 10px 12px calc(10px + env(safe-area-inset-bottom)); color: #fff; }
   .player-bar .btn { height: 40px; }
-  /* Hộp thoại tạo mới: trượt từ dưới lên */
-  dialog:not(.player) { width: 100vw; max-width: 100vw; margin: auto 0 0; border-radius: 14px 14px 0 0; padding: 20px 16px calc(16px + env(safe-area-inset-bottom)); }
+  /* Hộp thoại: nằm giữa màn hình */
+  dialog:not(.player) { width: calc(100vw - 32px); max-width: 480px; margin: auto; border-radius: 12px; padding: 20px 16px; max-height: calc(100dvh - 32px); overflow: auto; }
   dialog:not(.player) .actions button { flex: 1; height: 44px; }
   #toast { left: 16px; right: 16px; bottom: calc(16px + env(safe-area-inset-bottom)); text-align: center; }
 }
 .btn-danger { border-color: color-mix(in srgb, var(--destructive) 35%, transparent); }
 .btn-danger:hover { background: color-mix(in srgb, var(--destructive) 8%, transparent); }
+.danger-fill { background: var(--destructive); color: #fff; }
+.danger-fill:hover { background: color-mix(in srgb, var(--destructive) 88%, #000); }

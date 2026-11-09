@@ -239,16 +239,16 @@ async function renderProduct(slug) {
     try { put(await patch({status: e.target.value})); toast('Đã đổi trạng thái'); renderProduct(slug); } catch (er) { toast(er.message); }
   };
   $('#btnNote').onclick = async () => {
-    const note = prompt('Ghi chú cho người dựng', p.note || '');
-    if (note === null) return;
-    try { put(await patch({note})); renderProduct(slug); } catch (er) { toast(er.message); }
+    const f = await ask('Note', (f) => { f.note.value = p.note || ''; });
+    if (!f) return;
+    try { put(await patch({note: f.note.value})); toast('Đã lưu ghi chú'); renderProduct(slug); } catch (er) { toast(er.message); }
   };
   $('#btnDel').onclick = async () => {
-    if (!confirm(`Xoá "${p.name}" cùng toàn bộ source và video? File vào thùng rác Google Drive, khôi phục được trong 30 ngày.`)) return;
+    if (!(await confirmDel(`Xoá "${p.name}"?`, 'Toàn bộ source và video vào thùng rác Google Drive, khôi phục được trong 30 ngày.'))) return;
     try { await api(`/${p.slug}`, {method: 'DELETE'}); delete items[p.slug]; cache.set(items); toast('Đã xoá'); location.hash = ''; } catch (er) { toast(er.message); }
   };
   app.querySelectorAll('[data-del]').forEach((b) => (b.onclick = async () => {
-    if (!confirm(`Xoá file "${b.dataset.name}"? File vào thùng rác Google Drive.`)) return;
+    if (!(await confirmDel('Xoá file này?', `${b.dataset.name} sẽ vào thùng rác Google Drive.`))) return;
     b.closest('.result').style.opacity = '.4';
     try { put(await api(`/${p.slug}/files/${b.dataset.del}`, {method: 'DELETE'})); toast('Đã xoá'); renderProduct(slug); }
     catch (er) { toast(er.message); }
@@ -256,6 +256,18 @@ async function renderProduct(slug) {
 }
 
 /* ---------- Hộp thoại ---------- */
+// Hộp thoại riêng thay cho prompt()/confirm() (trình duyệt trong Zalo/Messenger hay chặn 2 hàm đó)
+function ask(id, setup) {
+  const dlg = $(`#dlg${id}`), f = $(`#form${id}`);
+  setup?.(f);
+  return new Promise((resolve) => {
+    f.onsubmit = (e) => { e.preventDefault(); const ok = e.submitter?.value !== 'cancel'; dlg.close(); resolve(ok ? f : null); };
+    dlg.oncancel = () => resolve(null);
+    dlg.showModal();
+  });
+}
+const confirmDel = (title, text) => ask('Confirm', () => { $('#confirmTitle').textContent = title; $('#confirmText').textContent = text; }).then(Boolean);
+
 const onOk = {
   async New(f) {
     try {
