@@ -17,7 +17,8 @@ while read -r file start dur name zoom cx; do
   if (( w > h )); then
     # Video ngang: nền mờ trên/dưới, giữa là 2 bản đặt cạnh nhau (trái 50% / phải 50%),
     # mỗi bản cắt đều 2 bên quanh tâm khung (cx, mặc định 0.5) – cao 608px như khung ngang gốc
-    VF="[0:v]split[a][b];[a]scale=540:960:force_original_aspect_ratio=increase,crop=540:960,boxblur=20:2,scale=1080:1920,eq=brightness=0.02[bg];[b]crop=ih*540/608:ih:max(0\\,min(iw-ow\\,iw*$cx-ow/2)):0,scale=540:608,split[l][r];[l][r]hstack[fg];[bg][fg]overlay=0:(H-h)/2,fps=30,$GRADE,format=yuv420p[v]"
+    # Video ngang: 2 bản giống nhau xếp trên/dưới, mỗi bản 1080x960 cắt đều 2 bên, không nền mờ
+    VF="[0:v]crop=min(iw\\,ih*9/8):ih:max(0\\,min(iw-ow\\,iw*$cx-ow/2)):0,scale=1080:960,setsar=1,split[t][b];[t][b]vstack,fps=30,$GRADE,format=yuv420p[v]"
   else
     FG="scale=trunc(1080*$zoom/2)*2:-2"
     VF="[0:v]split[a][b];[a]scale=540:960:force_original_aspect_ratio=increase,crop=540:960,boxblur=20:2,scale=1080:1920,eq=brightness=0.02[bg];[b]${FG}[fg];[bg][fg]overlay=(W-w)/2:(H-h)/2,fps=30,$GRADE,format=yuv420p[v]"

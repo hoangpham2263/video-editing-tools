@@ -10,6 +10,7 @@ Skill Claude Code dựng video review sản phẩm TikTok Shop theo style @thoku
 - Dữ liệu từng sản phẩm (cảnh, phụ đề, ghi chú): [review-video-sources](https://github.com/hoangpham2263/review-video-sources)
 - Quy tắc dựng (đã thống nhất): [references/rules.md](references/rules.md)
 - Web cho người quay xem sản phẩm / tải kết quả: https://hoangpham.is-a.dev/review-video/ (mã: `docs/`). Video lưu ở GitHub Releases của repo dữ liệu.
+- `worker/` (Cloudflare Worker tên `yooi`): chỉ đổi asset id → link phát tạm để web xem video ngay, không lưu gì. Deploy: `cd worker && npx wrangler deploy`.
 
 ## Cài lần đầu
 

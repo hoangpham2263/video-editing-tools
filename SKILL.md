@@ -58,6 +58,6 @@ Web: https://hoangpham.is-a.dev/review-video/ (mã nguồn `docs/`). Dữ liệu
 - File tên `KQ_...` = **video kết quả** do skill đẩy lên.
 - Trạng thái ở dòng đầu mô tả Release: `<!-- status:new|editing|done|posted -->` (Chờ dựng / Đang dựng / Có kết quả / Đã đăng).
 
-Người quay cần tài khoản GitHub được mời vào repo dữ liệu. Web dùng mã GitHub (token classic, quyền `repo`) lưu trong trình duyệt.
+Người quay cần tài khoản GitHub được mời vào repo dữ liệu. Web dùng mã GitHub (token classic, quyền `repo`) lưu trong trình duyệt. Xem video ngay trên web nhờ `worker/` (Worker `yooi`, chỉ đổi asset id → link phát tạm; deploy `cd worker && npx wrangler deploy`).
 
 `scripts/hub.mjs` dùng `gh` đã đăng nhập: `list`, `show <slug>`, `create "<tên>" ["ghi chú"]`, `pull <slug> [thư-mục]`, `push <slug> <file...>`, `status <slug> <new|editing|done|posted>`.

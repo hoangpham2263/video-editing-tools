@@ -4,3 +4,5 @@ node_modules/
 .wrangler/
 .dev.vars
 .push-
+worker/.wrangler/
+worker/node_modules/

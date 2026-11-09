@@ -10,11 +10,20 @@
 </head>
 <body>
   <header class="top">
-    <a href="#" class="brand"><span class="logo">▶</span> Review Hub</a>
-    <button id="btnSettings" class="ghost" title="Cài đặt">Cài đặt</button>
+    <div class="container top-inner">
+      <a href="#" class="brand"><span class="logo">▶</span> Review Hub</a>
+      <button id="btnSettings" class="ghost small" title="Cài đặt">Cài đặt</button>
+    </div>
   </header>
 
-  <main id="app"></main>
+  <main id="app" class="container"></main>
+
+  <dialog id="dlgPlay" class="player">
+    <form method="dialog"><button class="ghost small close" aria-label="Đóng">✕</button></form>
+    <video id="playVideo" controls playsinline></video>
+    <img id="playImg" alt="">
+    <div class="row between player-bar"><span id="playName" class="fname"></span><a id="playDl" class="btn small">Tải về</a></div>
+  </dialog>
 
   <dialog id="dlgSettings">
     <form method="dialog" id="formSettings">

@@ -4,6 +4,10 @@
 const REPO = 'hoangpham2263/review-video-sources';
 const STATUS = {new: 'Chờ dựng', editing: 'Đang dựng', done: 'Có kết quả', posted: 'Đã đăng'};
 const RESULT_PREFIX = 'KQ_';
+// Worker Cloudflare chỉ để đổi asset id → link phát tạm (GitHub không bật CORS cho link này)
+const LINK_API = 'https://yooi.hoangpham2263.workers.dev';
+const isVideo = (n) => /\.(mp4|mov|m4v|webm)$/i.test(n);
+const isImage = (n) => /\.(png|jpe?g|webp|gif)$/i.test(n);
 const $ = (s, el = document) => el.querySelector(s);
 const app = $('#app');
 
@@ -66,6 +70,53 @@ function toProduct(rel) {
 }
 const bodyOf = (status, note) => `<!-- status:${status} -->\n${note || ''}`.trim();
 
+/** Link phát tạm cho 1 file (cache ~50 phút) */
+const linkCache = new Map();
+async function mediaUrl(id) {
+  const c = linkCache.get(id);
+  if (c && c.exp > Date.now()) return c.url;
+  const r = await fetch(`${LINK_API}/asset/${id}`, {headers: {Authorization: `Bearer ${store.token}`}});
+  const d = await r.json().catch(() => ({}));
+  if (!r.ok || !d.url) throw new Error(d.error || 'Không lấy được link xem');
+  linkCache.set(id, {url: d.url, exp: Date.now() + 50 * 60e3});
+  return d.url;
+}
+
+/** Thẻ xem trước: video/ảnh hiện luôn, bấm để phát to */
+function mediaCard(f, label) {
+  const media = isVideo(f.name) || isImage(f.name);
+  return `<div class="card result">
+    ${media ? `<button class="thumb" data-play="${f.id}" data-name="${esc(f.name)}" aria-label="Xem ${esc(label)}"><span class="play">${isVideo(f.name) ? '▶' : '⤢'}</span></button>` : ''}
+    <div><div class="fname">${esc(label)}</div><div class="meta">${size(f.size)} · ${when(f.uploaded)}</div></div>
+    <div class="row"><button class="small" data-dl="${f.id}">Tải về</button><button class="small ghost danger" data-del="${f.id}" data-name="${esc(f.name)}">Xoá</button></div>
+  </div>`;
+}
+
+async function loadThumb(btn) {
+  const {play: id, name} = btn.dataset;
+  try {
+    const url = await mediaUrl(id);
+    const el = document.createElement(isVideo(name) ? 'video' : 'img');
+    if (isVideo(name)) Object.assign(el, {muted: true, playsInline: true, preload: 'metadata', src: url + '#t=1'});
+    else el.src = url;
+    btn.prepend(el);
+  } catch {}
+}
+
+async function openPlayer(id, name, label) {
+  const v = $('#playVideo'), im = $('#playImg');
+  v.hidden = !isVideo(name); im.hidden = isVideo(name);
+  $('#playName').textContent = label;
+  v.removeAttribute('src'); im.removeAttribute('src');
+  $('#dlgPlay').showModal();
+  try {
+    const url = await mediaUrl(id);
+    $('#playDl').href = url;
+    if (isVideo(name)) { v.src = url; v.play().catch(() => {}); } else im.src = url;
+  } catch (e) { toast(e.message); }
+}
+$('#dlgPlay').addEventListener('close', () => $('#playVideo').pause());
+
 /* ---------- Trang danh sách ---------- */
 let filter = 'all';
 async function renderList() {
@@ -103,10 +154,6 @@ async function renderProduct(slug) {
   try { p = toProduct(await gh(`/repos/${REPO}/releases/tags/${encodeURIComponent(slug)}`)); }
   catch (e) { app.innerHTML = `<a class="back" href="#">← Danh sách</a><p class="empty">${esc(e.message)}</p>`; return; }
 
-  const fileRow = (f, label) => `
-    <div class="card file"><div><div class="fname">${esc(label ?? f.name)}</div><div class="meta">${size(f.size)} · ${when(f.uploaded)}</div></div>
-    <div class="row"><a class="btn small" href="${esc(f.url)}">Tải về</a><button class="small ghost danger" data-del="${f.id}" data-name="${esc(f.name)}">Xoá</button></div></div>`;
-
   app.innerHTML = `
     <a class="back" href="#">← Danh sách</a>
     <div class="row between"><h1>${esc(p.name)}</h1><span class="badge s-${p.status}">${STATUS[p.status]}</span></div>
@@ -125,7 +172,7 @@ async function renderProduct(slug) {
 
     <section>
       <h2>Video kết quả (${p.results.length})</h2>
-      <div class="files">${p.results.map((f) => fileRow(f, f.name.slice(RESULT_PREFIX.length))).join('') || '<p class="meta">Chưa có video kết quả.</p>'}</div>
+      ${p.results.length ? `<div class="results">${p.results.map((f) => mediaCard(f, f.name.slice(RESULT_PREFIX.length))).join('')}</div>` : '<p class="meta">Chưa có video kết quả.</p>'}
     </section>
 
     <section>
@@ -135,7 +182,7 @@ async function renderProduct(slug) {
         Mở trang sửa Release → kéo thả video vào ô "Attach binaries" → bấm "Update release".<br>
         <span class="meta">Mỗi file tối đa 2 GB, giữ nguyên chất lượng. Dùng được trên điện thoại.</span>
       </a>
-      <div class="files">${p.sources.map((f) => fileRow(f)).join('')}</div>
+      ${p.sources.length ? `<div class="results">${p.sources.map((f) => mediaCard(f, f.name)).join('')}</div>` : ''}
     </section>`;
 
   const patch = (status, note) => gh(`/repos/${REPO}/releases/${p.id}`, {method: 'PATCH', json: {body: bodyOf(status, note)}});
@@ -156,6 +203,13 @@ async function renderProduct(slug) {
       location.hash = '';
     } catch (er) { toast(er.message); }
   };
+  app.querySelectorAll('[data-play]').forEach((b) => {
+    loadThumb(b);
+    b.onclick = () => openPlayer(b.dataset.play, b.dataset.name, b.closest('.result').querySelector('.fname').textContent);
+  });
+  app.querySelectorAll('[data-dl]').forEach((b) => (b.onclick = async () => {
+    try { location.href = await mediaUrl(b.dataset.dl); } catch (e) { toast(e.message); }
+  }));
   app.querySelectorAll('[data-del]').forEach((b) => (b.onclick = async () => {
     if (!confirm(`Xoá file "${b.dataset.name}"? Không khôi phục được.`)) return;
     try { await gh(`/repos/${REPO}/releases/assets/${b.dataset.del}`, {method: 'DELETE'}); toast('Đã xoá'); renderProduct(slug); }
