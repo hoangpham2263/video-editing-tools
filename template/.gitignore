@@ -1,0 +1,9 @@
+node_modules/
+out/
+public/clips/
+public/voice/
+public/music/
+public/covers/
+*.mp4
+*.mov
+*.MOV

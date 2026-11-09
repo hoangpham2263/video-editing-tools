@@ -1,0 +1,10 @@
+# file           start  dur  name
+IMG_3805.MOV     0.5    3.4  01_bia
+IMG_3789.MOV 2.8 2.8 02_mo_tui
+IMG_3791.MOV 3.0 2.55 03_cam_dep
+IMG_3792.MOV     0.8    3.0  04_quai_sao
+IMG_3795.MOV     0.2    3.2  05_charm
+IMG_3796.MOV     0.5    3.4  06_gan_charm
+IMG_3800.MOV     1.0    3.0  07_xong
+IMG_3811.MOV 3.0 3.0 075_mang
+IMG_3804.MOV     2.0    3.5  08_ket
