@@ -268,3 +268,9 @@ dialog:not(.player) .actions button[value="cancel"] { border: 1px solid var(--in
 .dlg-head h2 { margin: 0; }
 .dlg-head .x { width: 40px; height: 40px; padding: 0; font-size: 16px; flex: none; margin: -8px -8px -8px 0; }
 dialog button { touch-action: manipulation; -webkit-tap-highlight-color: transparent; }
+
+/* Ô nhập: viền mảnh nhạt để nhận ra ô, đậm hơn khi focus. Không bóng, không outline */
+input, textarea, select { border: 1px solid var(--input); background-color: var(--background); }
+input:hover, textarea:hover, select:hover { border-color: var(--ring); }
+input:focus, textarea:focus, select:focus,
+input:focus-visible, textarea:focus-visible, select:focus-visible { border-color: var(--foreground); }
