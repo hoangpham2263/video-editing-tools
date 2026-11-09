@@ -36,6 +36,28 @@ const split = (p) => ({
   results: (p.files || []).filter((f) => f.kind === 'result'),
 });
 
+const STEPS = [
+  ['new', 'Up source', 'Người quay up video'],
+  ['editing', 'Đang dựng', 'Người dựng làm video'],
+  ['done', 'Có video', 'Xem và tải về'],
+  ['posted', 'Đã đăng', 'Xong'],
+];
+const NEXT = {
+  new: (p) => split(p).sources.length
+    ? ['Đã có source, chờ người dựng làm video.', 'Có thể up thêm source nếu còn cảnh muốn thêm.']
+    : ['Cần up video quay sản phẩm.', 'Bấm vào ô "Up source" bên dưới, chọn video trong máy hoặc điện thoại.'],
+  editing: () => ['Người dựng đang làm video.', 'Khi xong, video sẽ hiện ở mục "Video kết quả".'],
+  done: () => ['Video đã xong. Bấm vào video để xem, bấm "Tải về" để lấy về đăng.', 'Đăng xong thì bấm "Đánh dấu đã đăng".'],
+  posted: () => ['Sản phẩm này đã đăng xong.', ''],
+};
+function stepper(status) {
+  const cur = STEPS.findIndex(([k]) => k === status);
+  return `<ol class="steps">${STEPS.map(([k, t, d], i) => `<li class="${i < cur ? 'past' : i === cur ? 'now' : ''}" data-step="${k}">
+    <span class="dot">${i < cur ? '✓' : i + 1}</span><span><b>${t}</b><small>${d}</small></span></li>`).join('')}</ol>`;
+}
+// Tên dễ đọc cho file kết quả
+const label = (f) => (f.kind === 'result' ? (isImage(f) ? 'Ảnh bìa' : 'Video review') : f.name);
+
 /* ---------- Thẻ file ---------- */
 function mediaCard(f) {
   const media = isVideo(f) || isImage(f);
@@ -43,15 +65,15 @@ function mediaCard(f) {
     ${media ? `<button class="thumb" data-play="${esc(f.id)}" aria-label="Xem ${esc(f.name)}">
       ${isImage(f) ? `<img src="${esc(f.url)}" alt="" loading="lazy">` : `<video src="${esc(f.url)}#t=1" muted playsinline preload="metadata"></video>`}
       <span class="play">${isVideo(f) ? '▶' : '⤢'}</span></button>` : ''}
-    <div><div class="fname">${esc(f.name)}</div><div class="meta">${size(f.size)} · ${when(f.uploaded)}</div></div>
-    <div class="row"><a class="btn small" href="${esc(f.download)}">Tải về</a><button class="small ghost danger" data-del="${esc(f.id)}" data-name="${esc(f.name)}">Xoá</button></div>
+    <div><div class="fname">${esc(label(f))}</div><div class="meta">${size(f.size)} · ${when(f.uploaded)}</div></div>
+    <div class="row"><a class="btn small ${f.kind === 'result' ? 'primary' : ''}" href="${esc(f.download)}">Tải về</a><button class="small ghost danger" title="Xoá file" data-del="${esc(f.id)}" data-name="${esc(f.name)}">Xoá</button></div>
   </div>`;
 }
 
 function openPlayer(f) {
   const v = $('#playVideo'), im = $('#playImg');
   v.hidden = !isVideo(f); im.hidden = isVideo(f);
-  $('#playName').textContent = f.name;
+  $('#playName').textContent = label(f);
   $('#playDl').href = f.download;
   v.removeAttribute('src'); im.removeAttribute('src');
   $('#dlgPlay').showModal();
@@ -96,16 +118,23 @@ function dropZone(el, input, onFiles) {
   el.ondragleave = () => el.classList.remove('over');
   el.ondrop = (e) => { e.preventDefault(); el.classList.remove('over'); onFiles([...e.dataTransfer.files]); };
 }
-const dropHtml = (id, text) => `<label class="drop" id="${id}" style="display:block;margin:0">
+const dropHtml = (id, text, big) => `<label class="drop ${big ? 'big' : ''}" id="${id}">
   <input type="file" multiple accept="video/*,image/*" hidden>
-  <strong style="color:var(--foreground)">${text}</strong><br>
-  <span class="meta">Bấm để chọn hoặc kéo thả. Giữ nguyên chất lượng gốc, tối đa 5 GB mỗi file. Dùng được trên điện thoại.</span>
+  <span class="drop-icon" aria-hidden="true"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 16V4M6 10l6-6 6 6M4 20h16"/></svg></span>
+  <strong>${text}</strong>
+  <span class="meta">Bấm để chọn video, hoặc kéo thả vào đây. Chọn được nhiều file. Giữ nguyên chất lượng, tối đa 5 GB/file.</span>
 </label>`;
 
 /* ---------- Trang danh sách ---------- */
 let filter = 'all';
 async function renderList() {
-  app.innerHTML = `<div class="row between"><div><h1>Sản phẩm</h1><p class="meta" style="margin:4px 0 0">Người quay up source, người dựng trả video kết quả.</p></div><button class="primary" id="btnNew">+ Sản phẩm mới</button></div>
+  app.innerHTML = `<div class="row between"><div><h1>Sản phẩm</h1><p class="meta" style="margin:4px 0 0">Mỗi sản phẩm là một video cần làm.</p></div><button class="primary" id="btnNew">+ Sản phẩm mới</button></div>
+    <details class="card guide" id="guide"><summary><b>Cách dùng</b> <span class="meta">(3 bước)</span></summary>
+      <ol class="guide-steps">
+        <li><b>Tạo sản phẩm</b><span>Bấm "+ Sản phẩm mới", nhập tên và ghi chú (màu, thương hiệu, deal).</span></li>
+        <li><b>Up video quay</b><span>Mở sản phẩm, bấm ô "Up source", chọn video từ máy hoặc điện thoại.</span></li>
+        <li><b>Lấy video về đăng</b><span>Khi trạng thái là "Có kết quả", mở sản phẩm, xem rồi bấm "Tải về".</span></li>
+      </ol></details>
     <div class="tabs" id="tabs"></div><div class="list" id="list"><p class="empty">Đang tải…</p></div>`;
   $('#btnNew').onclick = () => $('#dlgNew').showModal();
   let items = [];
@@ -121,12 +150,11 @@ async function renderList() {
     const shown = items.filter((i) => filter === 'all' || i.status === filter);
     $('#list').innerHTML = shown.length ? shown.map((p) => {
       const {sources, results} = split(p);
-      const bytes = (p.files || []).reduce((s, a) => s + a.size, 0);
-      return `<a class="card item" href="#/p/${encodeURIComponent(p.slug)}">
+            return `<a class="card item" href="#/p/${encodeURIComponent(p.slug)}">
         <div class="row between"><span class="name">${esc(p.name)}</span><span class="badge s-${p.status}">${STATUS[p.status]}</span></div>
-        <div class="meta">${sources.length} source · ${results.length} kết quả · ${size(bytes)} · ${when(p.updatedAt)}</div>
+        <div class="meta">${sources.length ? `${sources.length} video quay` : 'Chưa có video quay'} · ${results.length ? `${results.length} file kết quả` : 'chưa có kết quả'} · cập nhật ${when(p.updatedAt)}</div>
       </a>`;
-    }).join('') : `<p class="empty">Chưa có sản phẩm nào.</p>`;
+    }).join('') : `<p class="empty">${items.length ? 'Không có sản phẩm ở mục này.' : 'Chưa có sản phẩm nào. Bấm "+ Sản phẩm mới" để bắt đầu.'}</p>`;
   };
   draw();
 }
@@ -140,40 +168,48 @@ async function renderProduct(slug) {
   const {sources, results} = split(p);
   const byId = Object.fromEntries((p.files || []).map((f) => [f.id, f]));
 
+  const [nextT, nextD] = NEXT[p.status](p);
   app.innerHTML = `
-    <a class="back" href="#">← Danh sách</a>
+    <a class="back" href="#">← Tất cả sản phẩm</a>
     <div class="row between"><h1>${esc(p.name)}</h1><span class="badge s-${p.status}">${STATUS[p.status]}</span></div>
-    <div class="card">
-      <div class="meta">Mã: ${esc(p.slug)} · tạo ${when(p.createdAt)}</div>
-      ${p.note ? `<p class="note">${esc(p.note)}</p>` : ''}
-      <div class="row" style="margin-top:10px">
-        <label style="margin:0;flex:1;min-width:160px">
-          <select id="status">${Object.entries(STATUS).map(([k, v]) => `<option value="${k}" ${k === p.status ? 'selected' : ''}>${v}</option>`).join('')}</select>
-        </label>
-        <button id="btnNote" class="small">Sửa ghi chú</button>
-        <button id="btnDel" class="small ghost danger">Xoá sản phẩm</button>
-      </div>
-    </div>
+    ${stepper(p.status)}
+    <div class="card next"><b>Việc cần làm tiếp:</b> ${esc(nextT)}${nextD ? `<div class="meta">${esc(nextD)}</div>` : ''}
+      ${p.status === 'done' ? '<div class="row" style="margin-top:10px"><button class="primary small" id="btnPosted">Đánh dấu đã đăng</button></div>' : ''}</div>
 
     <section>
-      <h2>Video kết quả (${results.length})</h2>
-      ${results.length ? `<div class="results">${results.map(mediaCard).join('')}</div>` : '<p class="meta">Chưa có video kết quả.</p>'}
-      <details><summary class="meta" style="cursor:pointer">Up video kết quả</summary><div style="margin-top:8px">${dropHtml('dropResult', 'Up video kết quả')}</div></details>
-      <div class="files" id="upsResult"></div>
+      <h2>Video kết quả</h2>
+      ${results.length ? `<div class="results">${results.map(mediaCard).join('')}</div>` : '<p class="empty small">Chưa có video. Người dựng làm xong sẽ hiện ở đây.</p>'}
     </section>
 
     <section>
-      <h2>Source (${sources.length})</h2>
-      ${dropHtml('drop', 'Up source (video quay)')}
+      <div class="row between"><h2>Video quay (source)</h2><span class="meta">${sources.length} file</span></div>
+      ${dropHtml('drop', 'Up source', !sources.length)}
       <div class="files" id="ups"></div>
       ${sources.length ? `<div class="results">${sources.map(mediaCard).join('')}</div>` : ''}
-    </section>`;
+    </section>
+
+    <details class="card more"><summary><b>Thông tin và cài đặt</b></summary>
+      <div class="meta" style="margin-top:10px">Mã: ${esc(p.slug)} · tạo ${when(p.createdAt)}</div>
+      <p class="note">${p.note ? esc(p.note) : '<span class="meta">Chưa có ghi chú.</span>'}</p>
+      <div class="row" style="margin-top:10px">
+        <label style="margin:0;flex:1;min-width:160px"><span class="meta">Trạng thái</span>
+          <select id="status">${Object.entries(STATUS).map(([k, v]) => `<option value="${k}" ${k === p.status ? 'selected' : ''}>${v}</option>`).join('')}</select>
+        </label>
+      </div>
+      <div class="row" style="margin-top:10px">
+        <button id="btnNote" class="small">Sửa ghi chú</button>
+        <button id="btnDel" class="small ghost danger">Xoá sản phẩm</button>
+      </div>
+      <div style="margin-top:14px">${dropHtml('dropResult', 'Up video kết quả (cho người dựng)')}</div>
+      <div class="files" id="upsResult"></div>
+    </details>`;
 
   dropZone($('#drop'), $('#drop input'), (fs) => uploadAll(p, fs, 'source'));
   dropZone($('#dropResult'), $('#dropResult input'), (fs) => uploadAll(p, fs, 'result'));
   app.querySelectorAll('[data-play]').forEach((b) => (b.onclick = () => openPlayer(byId[b.dataset.play])));
 
   const patch = (json) => api(`/${p.slug}`, {method: 'PATCH', json});
+  if ($('#btnPosted')) $('#btnPosted').onclick = async () => { try { await patch({status: 'posted'}); toast('Đã đánh dấu đã đăng'); renderProduct(slug); } catch (er) { toast(er.message); } };
   $('#status').onchange = async (e) => {
     try { await patch({status: e.target.value}); toast('Đã đổi trạng thái'); renderProduct(slug); } catch (er) { toast(er.message); }
   };
