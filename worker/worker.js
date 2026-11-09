@@ -30,7 +30,8 @@ export default {
         headers: {Authorization: auth, Accept: 'application/vnd.github+json', 'Content-Type': req.headers.get('Content-Type') || 'application/octet-stream', 'User-Agent': 'review-hub'},
       });
       const d = await r.json().catch(() => ({}));
-      const msg = r.status === 422 ? 'Trùng tên file đã có' : d.message;
+      const dup = (d.errors || []).some((e) => e.code === 'already_exists');
+      const msg = dup ? 'Trùng tên file đã có' : [d.message, JSON.stringify(d.errors || '')].join(' ');
       return new Response(JSON.stringify(r.ok ? {id: d.id, name: d.name} : {error: msg || `GitHub ${r.status}`}), {status: r.status, headers: {...cors, ...json}});
     }
     const m = new URL(req.url).pathname.match(/^\/asset\/(\d+)$/);

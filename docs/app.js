@@ -1,26 +1,20 @@
-// Review Hub – đọc/ghi GitHub Releases của repo dữ liệu.
-// Mỗi sản phẩm = 1 Release (tag = mã sản phẩm). File thường = source, file tên "KQ_..." = video kết quả.
-// Trạng thái lưu ở dòng đầu phần mô tả: <!-- status:new -->
-const REPO = 'hoangpham2263/review-video-sources';
+// Review Hub – dữ liệu ở Google Drive qua Worker tools-hub-api (Drive "Tools Hub/Review Video/<mã>/").
+// Up file: Worker mở phiên upload, trình duyệt gửi thẳng lên Google (giữ nguyên chất lượng, tối đa 5 GB/file).
+const API = 'https://tools-hub-api.hoangpham2263.workers.dev';
 const STATUS = {new: 'Chờ dựng', editing: 'Đang dựng', done: 'Có kết quả', posted: 'Đã đăng'};
-const RESULT_PREFIX = 'KQ_';
-// Worker Cloudflare chỉ để đổi asset id → link phát tạm (GitHub không bật CORS cho link này)
-const LINK_API = 'https://yooi.hoangpham2263.workers.dev';
-const isVideo = (n) => /\.(mp4|mov|m4v|webm)$/i.test(n);
-const isImage = (n) => /\.(png|jpe?g|webp|gif)$/i.test(n);
+const isVideo = (f) => /^video\//.test(f.mime || '') || /\.(mp4|mov|m4v|webm)$/i.test(f.name);
+const isImage = (f) => /^image\//.test(f.mime || '') || /\.(png|jpe?g|webp|gif)$/i.test(f.name);
 const $ = (s, el = document) => el.querySelector(s);
 const app = $('#app');
 
 const store = {
-  get token() { try { return localStorage.getItem('hub.token') || ''; } catch { return ''; } },
-  set token(v) { try { localStorage.setItem('hub.token', v); } catch {} },
+  get token() { try { return localStorage.getItem('hub.key') || ''; } catch { return ''; } },
+  set token(v) { try { localStorage.setItem('hub.key', v); } catch {} },
 };
 
 const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({'&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'}[c]));
 const size = (b) => (b > 1e9 ? (b / 1e9).toFixed(2) + ' GB' : b > 1e6 ? (b / 1e6).toFixed(1) + ' MB' : Math.max(1, Math.round(b / 1e3)) + ' KB');
 const when = (iso) => (iso ? new Date(iso).toLocaleString('vi-VN', {dateStyle: 'short', timeStyle: 'short'}) : '');
-const slugify = (s) => s.normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/đ/gi, 'd').toLowerCase()
-  .replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 40) || 'san-pham';
 
 function toast(msg) {
   const t = $('#toast');
@@ -30,109 +24,60 @@ function toast(msg) {
   toast.t = setTimeout(() => t.classList.remove('show'), 2600);
 }
 
-async function gh(path, opts = {}) {
-  if (!store.token) { openSettings(); throw new Error('Chưa nhập mã GitHub'); }
-  const r = await fetch(`https://api.github.com${path}`, {
-    ...opts,
-    headers: {
-      Authorization: `Bearer ${store.token}`,
-      Accept: 'application/vnd.github+json',
-      ...(opts.json ? {'Content-Type': 'application/json'} : {}),
-    },
+async function api(path, opts = {}) {
+  if (!store.token) { openSettings(); throw new Error('Chưa đăng nhập'); }
+  const r = await fetch(`${API}/api/review${path}`, {
+    method: opts.method || 'GET',
+    headers: {'x-admin-key': store.token, ...(opts.json ? {'content-type': 'application/json'} : {})},
     body: opts.json ? JSON.stringify(opts.json) : undefined,
   });
-  if (r.status === 401) { openSettings(); throw new Error('Mã GitHub sai hoặc hết hạn'); }
-  if (r.status === 404) throw new Error('Không thấy. Tài khoản này đã được mời vào repo dữ liệu chưa?');
-  if (r.status === 204) return null;
   const d = await r.json().catch(() => ({}));
-  if (!r.ok) throw new Error(d.message || `Lỗi ${r.status}`);
+  if (r.status === 401) { openSettings(); throw new Error('Sai mật khẩu'); }
+  if (!r.ok) throw new Error(d.error || `Lỗi ${r.status}`);
   return d;
 }
 
-/** Tách release thành sản phẩm */
-function toProduct(rel) {
-  const body = rel.body || '';
-  const m = body.match(/<!--\s*status:(\w+)\s*-->/);
-  const note = body.replace(/<!--\s*status:\w+\s*-->\s*/g, '').trim();
-  const assets = (rel.assets || []).map((a) => ({
-    id: a.id, name: a.name, size: a.size, uploaded: a.updated_at, url: a.browser_download_url,
-  }));
-  return {
-    id: rel.id, slug: rel.tag_name, name: rel.name || rel.tag_name, note,
-    status: m?.[1] && STATUS[m[1]] ? m[1] : 'new',
-    sources: assets.filter((a) => !a.name.startsWith(RESULT_PREFIX)),
-    results: assets.filter((a) => a.name.startsWith(RESULT_PREFIX)),
-    createdAt: rel.created_at,
-    updatedAt: assets.reduce((t, a) => (a.uploaded > t ? a.uploaded : t), rel.created_at),
-    page: rel.html_url,
-    edit: `https://github.com/${REPO}/releases/edit/${encodeURIComponent(rel.tag_name)}`,
-  };
-}
-const bodyOf = (status, note) => `<!-- status:${status} -->\n${note || ''}`.trim();
+const split = (p) => ({
+  sources: (p.files || []).filter((f) => f.kind !== 'result'),
+  results: (p.files || []).filter((f) => f.kind === 'result'),
+});
 
-/** Link phát tạm cho 1 file (cache ~50 phút) */
-const linkCache = new Map();
-async function mediaUrl(id) {
-  const c = linkCache.get(id);
-  if (c && c.exp > Date.now()) return c.url;
-  const r = await fetch(`${LINK_API}/asset/${id}`, {headers: {Authorization: `Bearer ${store.token}`}});
-  const d = await r.json().catch(() => ({}));
-  if (!r.ok || !d.url) throw new Error(d.error || 'Không lấy được link xem');
-  linkCache.set(id, {url: d.url, exp: Date.now() + 50 * 60e3});
-  return d.url;
-}
-
-/** Thẻ xem trước: video/ảnh hiện luôn, bấm để phát to */
-function mediaCard(f, label) {
-  const media = isVideo(f.name) || isImage(f.name);
+/* ---------- Thẻ file ---------- */
+function mediaCard(f) {
+  const media = isVideo(f) || isImage(f);
   return `<div class="card result">
-    ${media ? `<button class="thumb" data-play="${f.id}" data-name="${esc(f.name)}" aria-label="Xem ${esc(label)}"><span class="play">${isVideo(f.name) ? '▶' : '⤢'}</span></button>` : ''}
-    <div><div class="fname">${esc(label)}</div><div class="meta">${size(f.size)} · ${when(f.uploaded)}</div></div>
-    <div class="row"><button class="small" data-dl="${f.id}">Tải về</button><button class="small ghost danger" data-del="${f.id}" data-name="${esc(f.name)}">Xoá</button></div>
+    ${media ? `<button class="thumb" data-play="${esc(f.id)}" aria-label="Xem ${esc(f.name)}">
+      ${isImage(f) ? `<img src="${esc(f.url)}" alt="" loading="lazy">` : `<video src="${esc(f.url)}#t=1" muted playsinline preload="metadata"></video>`}
+      <span class="play">${isVideo(f) ? '▶' : '⤢'}</span></button>` : ''}
+    <div><div class="fname">${esc(f.name)}</div><div class="meta">${size(f.size)} · ${when(f.uploaded)}</div></div>
+    <div class="row"><a class="btn small" href="${esc(f.download)}">Tải về</a><button class="small ghost danger" data-del="${esc(f.id)}" data-name="${esc(f.name)}">Xoá</button></div>
   </div>`;
 }
 
-async function loadThumb(btn) {
-  const {play: id, name} = btn.dataset;
-  try {
-    const url = await mediaUrl(id);
-    const el = document.createElement(isVideo(name) ? 'video' : 'img');
-    if (isVideo(name)) Object.assign(el, {muted: true, playsInline: true, preload: 'metadata', src: url + '#t=1'});
-    else el.src = url;
-    btn.prepend(el);
-  } catch {}
-}
-
-async function openPlayer(id, name, label) {
+function openPlayer(f) {
   const v = $('#playVideo'), im = $('#playImg');
-  v.hidden = !isVideo(name); im.hidden = isVideo(name);
-  $('#playName').textContent = label;
+  v.hidden = !isVideo(f); im.hidden = isVideo(f);
+  $('#playName').textContent = f.name;
+  $('#playDl').href = f.download;
   v.removeAttribute('src'); im.removeAttribute('src');
   $('#dlgPlay').showModal();
-  try {
-    const url = await mediaUrl(id);
-    $('#playDl').href = url;
-    if (isVideo(name)) { v.src = url; v.play().catch(() => {}); } else im.src = url;
-  } catch (e) { toast(e.message); }
+  if (isVideo(f)) { v.src = f.url; v.play().catch(() => {}); } else im.src = f.url;
 }
-$('#dlgPlay').addEventListener('close', () => $('#playVideo').pause());
+$('#dlgPlay').addEventListener('close', () => { $('#playVideo').pause(); $('#playVideo').removeAttribute('src'); });
 
-/* ---------- Up source qua worker ---------- */
-const MAX_UP = 100 * 1024 * 1024;
-function uploadOne(releaseId, file, onProgress) {
+/* ---------- Up file thẳng lên Google Drive ---------- */
+function putFile(uploadUrl, file, onProgress) {
   return new Promise((resolve, reject) => {
     const x = new XMLHttpRequest();
-    x.open('POST', `${LINK_API}/upload/${releaseId}?name=${encodeURIComponent(file.name)}`);
-    x.setRequestHeader('Authorization', `Bearer ${store.token}`);
-    x.setRequestHeader('Content-Type', file.type || 'application/octet-stream');
+    x.open('PUT', uploadUrl);
     x.upload.onprogress = (e) => e.lengthComputable && onProgress(e.loaded / e.total);
-    x.onload = () => { let d = {}; try { d = JSON.parse(x.responseText); } catch {} x.status < 300 ? resolve(d) : reject(new Error(d.error || `Lỗi ${x.status}`)); };
+    x.onload = () => { let d = {}; try { d = JSON.parse(x.responseText); } catch {} x.status < 300 && d.id ? resolve(d) : reject(new Error(`Up lỗi ${x.status}`)); };
     x.onerror = () => reject(new Error('Mất kết nối'));
     x.send(file);
   });
 }
-async function uploadAll(p, files, slug) {
-  const box = $('#ups');
+async function uploadAll(p, files, kind) {
+  const box = $(kind === 'result' ? '#upsResult' : '#ups');
   let ok = 0;
   for (const f of files) {
     const row = document.createElement('div');
@@ -140,25 +85,38 @@ async function uploadAll(p, files, slug) {
     row.innerHTML = `<div><div class="fname">${esc(f.name)}</div><div class="meta">${size(f.size)} · <span class="st">Đang up…</span></div><div class="bar"><i></i></div></div>`;
     box.append(row);
     const st = row.querySelector('.st'), bar = row.querySelector('.bar i');
-    if (f.size > MAX_UP) { st.textContent = 'Quá 100 MB, hãy quay/cắt ngắn hơn'; st.classList.add('danger'); continue; }
-    if (p.sources.some((s) => s.name === f.name)) { st.textContent = 'Đã có file trùng tên'; st.classList.add('danger'); continue; }
-    try { await uploadOne(p.id, f, (r) => (bar.style.width = `${Math.round(r * 100)}%`)); st.textContent = 'Xong'; ok++; }
-    catch (e) { st.textContent = e.message; st.classList.add('danger'); }
+    if ((p.files || []).some((x) => x.name === f.name && x.kind === kind)) { st.textContent = 'Đã có file trùng tên'; st.classList.add('danger'); continue; }
+    try {
+      const {uploadUrl} = await api(`/${p.slug}/upload`, {method: 'POST', json: {name: f.name, size: f.size, mime: f.type || 'application/octet-stream', kind}});
+      const d = await putFile(uploadUrl, f, (r) => (bar.style.width = `${Math.round(r * 100)}%`));
+      await api(`/${p.slug}/files`, {method: 'POST', json: {id: d.id, kind}});
+      st.textContent = 'Xong';
+      ok++;
+    } catch (e) { st.textContent = e.message; st.classList.add('danger'); }
   }
-  if (ok) { toast(`Đã up ${ok} file`); renderProduct(slug); }
+  if (ok) { toast(`Đã up ${ok} file`); renderProduct(p.slug); }
 }
+function dropZone(el, input, onFiles) {
+  input.onchange = () => onFiles([...input.files]);
+  el.ondragover = (e) => { e.preventDefault(); el.classList.add('over'); };
+  el.ondragleave = () => el.classList.remove('over');
+  el.ondrop = (e) => { e.preventDefault(); el.classList.remove('over'); onFiles([...e.dataTransfer.files]); };
+}
+const dropHtml = (id, text) => `<label class="drop" id="${id}" style="display:block;margin:0">
+  <input type="file" multiple accept="video/*,image/*" hidden>
+  <strong style="color:var(--foreground)">${text}</strong><br>
+  <span class="meta">Bấm để chọn hoặc kéo thả. Giữ nguyên chất lượng gốc, tối đa 5 GB mỗi file. Dùng được trên điện thoại.</span>
+</label>`;
 
 /* ---------- Trang danh sách ---------- */
 let filter = 'all';
 async function renderList() {
-  app.innerHTML = `<div class="row between"><div><h1>Sản phẩm</h1><p class="meta" style="margin:4px 0 0">Người quay up source, người dựng trả video kết quả. Lưu trên GitHub Releases.</p></div><button class="primary" id="btnNew">+ Sản phẩm mới</button></div>
+  app.innerHTML = `<div class="row between"><div><h1>Sản phẩm</h1><p class="meta" style="margin:4px 0 0">Người quay up source, người dựng trả video kết quả.</p></div><button class="primary" id="btnNew">+ Sản phẩm mới</button></div>
     <div class="tabs" id="tabs"></div><div class="list" id="list"><p class="empty">Đang tải…</p></div>`;
   $('#btnNew').onclick = () => $('#dlgNew').showModal();
   let items = [];
-  try {
-    items = (await gh(`/repos/${REPO}/releases?per_page=100`)).map(toProduct)
-      .sort((a, b) => (b.updatedAt || '').localeCompare(a.updatedAt || ''));
-  } catch (e) { $('#list').innerHTML = `<p class="empty">${esc(e.message)}</p>`; return; }
+  try { items = (await api('')).sort((a, b) => (b.updatedAt || '').localeCompare(a.updatedAt || '')); }
+  catch (e) { $('#list').innerHTML = `<p class="empty">${esc(e.message)}</p>`; return; }
   const tabs = [['all', 'Tất cả'], ...Object.entries(STATUS)];
   const draw = () => {
     $('#tabs').innerHTML = tabs.map(([k, v]) => {
@@ -168,10 +126,11 @@ async function renderList() {
     $('#tabs').querySelectorAll('button').forEach((b) => (b.onclick = () => { filter = b.dataset.k; draw(); }));
     const shown = items.filter((i) => filter === 'all' || i.status === filter);
     $('#list').innerHTML = shown.length ? shown.map((p) => {
-      const bytes = [...p.sources, ...p.results].reduce((s, a) => s + a.size, 0);
+      const {sources, results} = split(p);
+      const bytes = (p.files || []).reduce((s, a) => s + a.size, 0);
       return `<a class="card item" href="#/p/${encodeURIComponent(p.slug)}">
         <div class="row between"><span class="name">${esc(p.name)}</span><span class="badge s-${p.status}">${STATUS[p.status]}</span></div>
-        <div class="meta">${p.sources.length} source · ${p.results.length} video kết quả · ${size(bytes)} · ${when(p.updatedAt)}</div>
+        <div class="meta">${sources.length} source · ${results.length} kết quả · ${size(bytes)} · ${when(p.updatedAt)}</div>
       </a>`;
     }).join('') : `<p class="empty">Chưa có sản phẩm nào.</p>`;
   };
@@ -182,8 +141,10 @@ async function renderList() {
 async function renderProduct(slug) {
   app.innerHTML = `<p class="empty">Đang tải…</p>`;
   let p;
-  try { p = toProduct(await gh(`/repos/${REPO}/releases/tags/${encodeURIComponent(slug)}`)); }
+  try { p = await api(`/${encodeURIComponent(slug)}`); }
   catch (e) { app.innerHTML = `<a class="back" href="#">← Danh sách</a><p class="empty">${esc(e.message)}</p>`; return; }
+  const {sources, results} = split(p);
+  const byId = Object.fromEntries((p.files || []).map((f) => [f.id, f]));
 
   app.innerHTML = `
     <a class="back" href="#">← Danh sách</a>
@@ -201,55 +162,39 @@ async function renderProduct(slug) {
     </div>
 
     <section>
-      <h2>Video kết quả (${p.results.length})</h2>
-      ${p.results.length ? `<div class="results">${p.results.map((f) => mediaCard(f, f.name.slice(RESULT_PREFIX.length))).join('')}</div>` : '<p class="meta">Chưa có video kết quả.</p>'}
+      <h2>Video kết quả (${results.length})</h2>
+      ${results.length ? `<div class="results">${results.map(mediaCard).join('')}</div>` : '<p class="meta">Chưa có video kết quả.</p>'}
+      <details><summary class="meta" style="cursor:pointer">Up video kết quả</summary><div style="margin-top:8px">${dropHtml('dropResult', 'Up video kết quả')}</div></details>
+      <div class="files" id="upsResult"></div>
     </section>
 
     <section>
-      <h2>Source (${p.sources.length})</h2>
-      <label class="drop" id="drop" style="display:block;margin:0">
-        <input type="file" id="pick" multiple accept="video/*,image/*" hidden>
-        <strong style="color:var(--foreground)">Bấm để chọn hoặc kéo thả video vào đây</strong><br>
-        <span class="meta">Giữ nguyên chất lượng gốc. Tối đa 100 MB mỗi file. Dùng được trên điện thoại.</span>
-      </label>
+      <h2>Source (${sources.length})</h2>
+      ${dropHtml('drop', 'Up source (video quay)')}
       <div class="files" id="ups"></div>
-      ${p.sources.length ? `<div class="results">${p.sources.map((f) => mediaCard(f, f.name)).join('')}</div>` : ''}
+      ${sources.length ? `<div class="results">${sources.map(mediaCard).join('')}</div>` : ''}
     </section>`;
 
-  const pick = $('#pick'), drop = $('#drop');
-  pick.onchange = () => uploadAll(p, [...pick.files], slug);
-  drop.ondragover = (e) => { e.preventDefault(); drop.classList.add('over'); };
-  drop.ondragleave = () => drop.classList.remove('over');
-  drop.ondrop = (e) => { e.preventDefault(); drop.classList.remove('over'); uploadAll(p, [...e.dataTransfer.files], slug); };
+  dropZone($('#drop'), $('#drop input'), (fs) => uploadAll(p, fs, 'source'));
+  dropZone($('#dropResult'), $('#dropResult input'), (fs) => uploadAll(p, fs, 'result'));
+  app.querySelectorAll('[data-play]').forEach((b) => (b.onclick = () => openPlayer(byId[b.dataset.play])));
 
-  const patch = (status, note) => gh(`/repos/${REPO}/releases/${p.id}`, {method: 'PATCH', json: {body: bodyOf(status, note)}});
+  const patch = (json) => api(`/${p.slug}`, {method: 'PATCH', json});
   $('#status').onchange = async (e) => {
-    try { await patch(e.target.value, p.note); toast('Đã đổi trạng thái'); renderProduct(slug); } catch (er) { toast(er.message); }
+    try { await patch({status: e.target.value}); toast('Đã đổi trạng thái'); renderProduct(slug); } catch (er) { toast(er.message); }
   };
   $('#btnNote').onclick = async () => {
     const note = prompt('Ghi chú cho người dựng', p.note || '');
     if (note === null) return;
-    try { await patch(p.status, note); renderProduct(slug); } catch (er) { toast(er.message); }
+    try { await patch({note}); renderProduct(slug); } catch (er) { toast(er.message); }
   };
   $('#btnDel').onclick = async () => {
-    if (!confirm(`Xoá hẳn "${p.name}" cùng toàn bộ source và video? Không khôi phục được.`)) return;
-    try {
-      await gh(`/repos/${REPO}/releases/${p.id}`, {method: 'DELETE'});
-      await gh(`/repos/${REPO}/git/refs/tags/${encodeURIComponent(p.slug)}`, {method: 'DELETE'}).catch(() => {});
-      toast('Đã xoá');
-      location.hash = '';
-    } catch (er) { toast(er.message); }
+    if (!confirm(`Xoá "${p.name}" cùng toàn bộ source và video? File vào thùng rác Google Drive, khôi phục được trong 30 ngày.`)) return;
+    try { await api(`/${p.slug}`, {method: 'DELETE'}); toast('Đã xoá'); location.hash = ''; } catch (er) { toast(er.message); }
   };
-  app.querySelectorAll('[data-play]').forEach((b) => {
-    loadThumb(b);
-    b.onclick = () => openPlayer(b.dataset.play, b.dataset.name, b.closest('.result').querySelector('.fname').textContent);
-  });
-  app.querySelectorAll('[data-dl]').forEach((b) => (b.onclick = async () => {
-    try { location.href = await mediaUrl(b.dataset.dl); } catch (e) { toast(e.message); }
-  }));
   app.querySelectorAll('[data-del]').forEach((b) => (b.onclick = async () => {
-    if (!confirm(`Xoá file "${b.dataset.name}"? Không khôi phục được.`)) return;
-    try { await gh(`/repos/${REPO}/releases/assets/${b.dataset.del}`, {method: 'DELETE'}); toast('Đã xoá'); renderProduct(slug); }
+    if (!confirm(`Xoá file "${b.dataset.name}"? File vào thùng rác Google Drive.`)) return;
+    try { await api(`/${p.slug}/files/${b.dataset.del}`, {method: 'DELETE'}); toast('Đã xoá'); renderProduct(slug); }
     catch (er) { toast(er.message); }
   }));
 }
@@ -262,20 +207,13 @@ function openSettings() {
 const onOk = {
   async Settings(f) {
     store.token = f.token.value.trim();
-    try {
-      const r = await fetch('https://api.github.com/user', {headers: {Authorization: `Bearer ${store.token}`}});
-      const u = await r.json();
-      toast(r.ok ? `Đã đăng nhập: ${u.login}` : 'Mã GitHub không hợp lệ');
-      route();
-    } catch (e) { toast(e.message); }
+    try { await api(''); toast('Đã đăng nhập'); route(); } catch (e) { toast(e.message); }
   },
   async New(f) {
-    const name = f.querySelector('[name=name]').value.trim();
-    const tag = `${slugify(name)}-${Date.now().toString(36).slice(-4)}`;
     try {
-      await gh(`/repos/${REPO}/releases`, {method: 'POST', json: {tag_name: tag, target_commitish: 'main', name, body: bodyOf('new', f.note.value)}});
+      const p = await api('', {method: 'POST', json: {name: f.querySelector('[name=name]').value.trim(), note: f.note.value}});
       f.reset();
-      location.hash = `#/p/${encodeURIComponent(tag)}`;
+      location.hash = `#/p/${encodeURIComponent(p.slug)}`;
     } catch (e) { toast(e.message); }
   },
 };

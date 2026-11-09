@@ -1,105 +1,110 @@
 #!/usr/bin/env node
-// Review Hub CLI – dữ liệu nằm ở GitHub Releases của repo review-video-sources.
-// Mỗi sản phẩm = 1 Release (tag = slug). File thường = source; file "KQ_<tên>" = video kết quả.
-// Trạng thái ở dòng đầu mô tả: <!-- status:new|editing|done|posted -->
-// Cần: gh CLI đã đăng nhập (gh auth login).
-import {execFileSync} from 'node:child_process';
+// Review Hub CLI – dữ liệu ở Google Drive qua Worker tools-hub-api ("Tools Hub/Review Video/<mã>/").
+// Cần mật khẩu app Tools Hub trong biến môi trường REVIEW_HUB_KEY (hoặc file ~/.config/review-video/key).
 import fs from 'node:fs';
+import os from 'node:os';
 import path from 'node:path';
 import {fileURLToPath} from 'node:url';
 
-const REPO = process.env.HUB_REPO || 'hoangpham2263/review-video-sources';
+const API = process.env.REVIEW_HUB_API || 'https://tools-hub-api.hoangpham2263.workers.dev';
 const SKILL = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
-const PREFIX = 'KQ_';
 const STATUS = {new: 'Chờ dựng', editing: 'Đang dựng', done: 'Có kết quả', posted: 'Đã đăng'};
-
-const run = (args, opts = {}) => execFileSync('gh', args, {encoding: 'utf8', stdio: ['ignore', 'pipe', 'inherit'], ...opts});
-const api = (p, ...extra) => JSON.parse(run(['api', p, ...extra]) || 'null');
+const keyFile = path.join(os.homedir(), '.config/review-video/key');
+const KEY = process.env.REVIEW_HUB_KEY || (fs.existsSync(keyFile) ? fs.readFileSync(keyFile, 'utf8').trim() : '');
 const mb = (b) => (b / 1e6).toFixed(1) + ' MB';
 const die = (m) => { console.error(m); process.exit(1); };
+const MIME = {'.mp4': 'video/mp4', '.mov': 'video/quicktime', '.png': 'image/png', '.jpg': 'image/jpeg', '.jpeg': 'image/jpeg'};
 
-function parse(rel) {
-  const body = rel.body || '';
-  const m = body.match(/<!--\s*status:(\w+)\s*-->/);
-  return {
-    id: rel.id, slug: rel.tag_name, name: rel.name || rel.tag_name,
-    note: body.replace(/<!--\s*status:\w+\s*-->\s*/g, '').trim(),
-    status: STATUS[m?.[1]] ? m[1] : 'new',
-    sources: rel.assets.filter((a) => !a.name.startsWith(PREFIX)),
-    results: rel.assets.filter((a) => a.name.startsWith(PREFIX)),
-  };
+async function api(p, opts = {}) {
+  if (!KEY) die(`Thiếu mật khẩu: đặt REVIEW_HUB_KEY hoặc ghi vào ${keyFile}`);
+  const r = await fetch(`${API}/api/review${p}`, {
+    method: opts.method || 'GET',
+    headers: {'x-admin-key': KEY, origin: 'https://hoangpham.is-a.dev', ...(opts.json ? {'content-type': 'application/json'} : {})},
+    body: opts.json ? JSON.stringify(opts.json) : undefined,
+  });
+  const d = await r.json().catch(() => ({}));
+  if (!r.ok) die(d.error || `Lỗi ${r.status}`);
+  return d;
 }
-const get = (slug) => parse(api(`repos/${REPO}/releases/tags/${encodeURIComponent(slug)}`));
-const setStatus = (p, s) => run(['api', '-X', 'PATCH', `repos/${REPO}/releases/${p.id}`, '-f', `body=<!-- status:${s} -->\n${p.note}`]);
-const slugify = (s) => s.normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/đ/gi, 'd').toLowerCase()
-  .replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 40) || 'san-pham';
+const files = (p, kind) => (p.files || []).filter((f) => (kind === 'result' ? f.kind === 'result' : f.kind !== 'result'));
 
 const cmds = {
-  list() {
-    const rels = api(`repos/${REPO}/releases?per_page=100`).map(parse);
-    if (!rels.length) return console.log('Chưa có sản phẩm.');
-    for (const p of rels) console.log(`${p.slug.padEnd(36)} ${STATUS[p.status].padEnd(11)} ${p.sources.length} source, ${p.results.length} kết quả  ${p.name}`);
+  async list() {
+    const ps = await api('');
+    if (!ps.length) return console.log('Chưa có sản phẩm.');
+    for (const p of ps) console.log(`${p.slug.padEnd(36)} ${STATUS[p.status].padEnd(11)} ${files(p).length} source, ${files(p, 'result').length} kết quả  ${p.name}`);
   },
-  show(slug) {
-    const p = get(slug);
+  async show(slug) {
+    const p = await api(`/${slug}`);
     console.log(`${p.name}  [${STATUS[p.status]}]\n${p.note ? `Ghi chú: ${p.note}\n` : ''}`);
-    console.log(`Source (${p.sources.length}):`);
-    for (const a of p.sources) console.log(`  ${a.name}  ${mb(a.size)}`);
-    console.log(`Kết quả (${p.results.length}):`);
-    for (const a of p.results) console.log(`  ${a.name.slice(PREFIX.length)}  ${mb(a.size)}`);
+    for (const k of ['source', 'result']) {
+      console.log(`${k === 'source' ? 'Source' : 'Kết quả'} (${files(p, k).length}):`);
+      for (const f of files(p, k)) console.log(`  ${f.name}  ${mb(f.size)}`);
+    }
   },
-  create(name, note = '') {
+  async create(name, note = '') {
     if (!name) die('Cần tên sản phẩm');
-    const tag = `${slugify(name)}-${Date.now().toString(36).slice(-4)}`;
-    run(['release', 'create', tag, '-R', REPO, '--target', 'main', '--title', name, '--notes', `<!-- status:new -->\n${note}`]);
-    console.log(tag);
+    console.log((await api('', {method: 'POST', json: {name, note}})).slug);
   },
-  status(slug, s) {
+  async status(slug, s) {
     if (!STATUS[s]) die(`Trạng thái: ${Object.keys(STATUS).join(' | ')}`);
-    setStatus(get(slug), s);
+    await api(`/${slug}`, {method: 'PATCH', json: {status: s}});
     console.log(`${slug}: ${STATUS[s]}`);
   },
-  pull(slug, dir) {
-    const p = get(slug);
+  async pull(slug, dir) {
+    const p = await api(`/${slug}`);
     dir = path.resolve(dir || path.join(SKILL, 'work', slug, 'source'));
     fs.mkdirSync(dir, {recursive: true});
     fs.writeFileSync(path.join(dir, '..', 'note.txt'), `${p.name}\n\n${p.note}\n`);
-    for (const a of p.sources) {
-      const out = path.join(dir, a.name);
-      if (fs.existsSync(out) && fs.statSync(out).size === a.size) { console.log(`= ${a.name} (đã có)`); continue; }
-      run(['release', 'download', slug, '-R', REPO, '-p', a.name, '-D', dir, '--clobber'], {stdio: 'inherit'});
-      console.log(`↓ ${a.name}  ${mb(a.size)}`);
+    for (const f of files(p)) {
+      const out = path.join(dir, f.name);
+      if (fs.existsSync(out) && fs.statSync(out).size === f.size) { console.log(`= ${f.name} (đã có)`); continue; }
+      const r = await fetch(f.download);
+      if (!r.ok) die(`Tải ${f.name} lỗi ${r.status}`);
+      await fs.promises.writeFile(out, Buffer.from(await r.arrayBuffer()));
+      console.log(`↓ ${f.name}  ${mb(f.size)}`);
     }
-    if (p.status === 'new') setStatus(p, 'editing');
+    if (p.status === 'new') await api(`/${slug}`, {method: 'PATCH', json: {status: 'editing'}});
     console.log(`Xong: ${dir}`);
   },
-  push(slug, ...files) {
-    if (!files.length) die('Cần ít nhất 1 file');
-    const p = get(slug);
-    // Tên asset = tên file → tạo link tạm tên KQ_<file> để upload
-    const tmp = fs.mkdtempSync(path.join(SKILL, '.push-'));
-    try {
-      const linked = files.map((f) => {
-        const dst = path.join(tmp, PREFIX + path.basename(f));
-        fs.symlinkSync(path.resolve(f), dst);
-        return dst;
-      });
-      run(['release', 'upload', slug, '-R', REPO, '--clobber', ...linked], {stdio: 'inherit'});
-    } finally { fs.rmSync(tmp, {recursive: true, force: true}); }
-    for (const f of files) console.log(`↑ ${PREFIX}${path.basename(f)}  ${mb(fs.statSync(f).size)}`);
-    if (['new', 'editing'].includes(p.status)) setStatus(p, 'done');
+  async push(slug, ...paths) {
+    if (!paths.length) die('Cần ít nhất 1 file');
+    for (const fp of paths) {
+      const st = fs.statSync(fp), name = path.basename(fp);
+      const mime = MIME[path.extname(fp).toLowerCase()] || 'application/octet-stream';
+      const {uploadUrl} = await api(`/${slug}/upload`, {method: 'POST', json: {name, size: st.size, mime, kind: 'result'}});
+      const r = await fetch(uploadUrl, {method: 'PUT', headers: {'content-type': mime, 'content-length': String(st.size)}, body: fs.createReadStream(fp), duplex: 'half'});
+      const d = await r.json().catch(() => ({}));
+      if (!r.ok || !d.id) die(`Up ${name} lỗi ${r.status}`);
+      await api(`/${slug}/files`, {method: 'POST', json: {id: d.id, kind: 'result'}});
+      console.log(`↑ ${name}  ${mb(st.size)}`);
+    }
+  },
+  // Up source từ máy (khi người dùng gửi file trực tiếp)
+  async 'push-source'(slug, ...paths) {
+    for (const fp of paths) {
+      const st = fs.statSync(fp), name = path.basename(fp);
+      const mime = MIME[path.extname(fp).toLowerCase()] || 'application/octet-stream';
+      const {uploadUrl} = await api(`/${slug}/upload`, {method: 'POST', json: {name, size: st.size, mime, kind: 'source'}});
+      const r = await fetch(uploadUrl, {method: 'PUT', headers: {'content-type': mime, 'content-length': String(st.size)}, body: fs.createReadStream(fp), duplex: 'half'});
+      const d = await r.json().catch(() => ({}));
+      if (!r.ok || !d.id) die(`Up ${name} lỗi ${r.status}`);
+      await api(`/${slug}/files`, {method: 'POST', json: {id: d.id, kind: 'source'}});
+      console.log(`↑ ${name}  ${mb(st.size)}`);
+    }
   },
 };
 
 const [cmd, ...args] = process.argv.slice(2);
 if (!cmds[cmd]) {
-  console.log(`Dùng: node scripts/hub.mjs <lệnh>   (repo: ${REPO})
-  list                        danh sách sản phẩm
-  show <slug>                 ghi chú + file
-  create "<tên>" ["ghi chú"]  tạo sản phẩm (1 Release)
-  pull <slug> [thư-mục]       tải source về (mặc định work/<slug>/source), đặt "Đang dựng"
-  push <slug> <file...>       đẩy video/ảnh bìa kết quả (tên KQ_...), đặt "Có kết quả"
-  status <slug> <new|editing|done|posted>`);
+  console.log(`Dùng: node scripts/hub.mjs <lệnh>   (API: ${API})
+  list                          danh sách sản phẩm
+  show <mã>                     ghi chú + file
+  create "<tên>" ["ghi chú"]    tạo sản phẩm
+  pull <mã> [thư-mục]           tải source về (mặc định work/<mã>/source), đặt "Đang dựng"
+  push <mã> <file...>           đẩy video/ảnh bìa kết quả, đặt "Có kết quả"
+  push-source <mã> <file...>    up source từ máy
+  status <mã> <new|editing|done|posted>`);
   process.exit(cmd ? 1 : 0);
 }
-cmds[cmd](...args);
+await cmds[cmd](...args);

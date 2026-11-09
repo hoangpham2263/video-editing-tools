@@ -16,7 +16,8 @@
     </div>
   </header>
 
-  <main id="app" class="container"></main>
+  <main id="app" class="container main"></main>
+  <footer class="foot">© <span id="year">2026</span> Phạm Quốc Hoàng · Review Hub · <a href="https://hoangpham.is-a.dev" target="_blank" rel="noopener">hoangpham.is-a.dev</a></footer>
 
   <dialog id="dlgPlay" class="player">
     <form method="dialog"><button class="ghost small close" aria-label="Đóng">✕</button></form>
@@ -27,11 +28,11 @@
 
   <dialog id="dlgSettings">
     <form method="dialog" id="formSettings">
-      <h2>Đăng nhập GitHub</h2>
-      <label>Mã GitHub (token)
-        <input name="token" type="password" required autocomplete="off" placeholder="ghp_...">
+      <h2>Đăng nhập</h2>
+      <label>Mật khẩu
+        <input name="token" type="password" required autocomplete="current-password" placeholder="Mật khẩu Tools Hub">
       </label>
-      <p class="hint">Tạo ở github.com → Settings → Developer settings → Personal access tokens → Tokens (classic) → Generate, tick quyền <b>repo</b>. Tài khoản phải được mời vào repo dữ liệu. Mã chỉ lưu trong trình duyệt này.</p>
+      <p class="hint">Dùng mật khẩu app của Tools Hub. Mật khẩu chỉ lưu trong trình duyệt này.</p>
       <div class="row end actions">
         <button value="ok" class="primary">Lưu</button>
         <button value="cancel" class="ghost" formnovalidate>Huỷ</button>
@@ -56,6 +57,7 @@
   </dialog>
 
   <div id="toast" role="status" aria-live="polite"></div>
+  <script>document.getElementById("year").textContent = new Date().getFullYear()</script>
   <script src="app.js"></script>
 </body>
 </html>
