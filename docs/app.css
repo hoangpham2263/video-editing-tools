@@ -163,7 +163,7 @@ section { display: grid; gap: 10px; }
 .bar { height: 6px; background: var(--muted); border-radius: 99px; overflow: hidden; margin-top: 6px; }
 .bar i { display: block; height: 100%; width: 0; background: var(--primary); transition: width .2s; }
 .empty { text-align: center; color: var(--muted-foreground); padding: 40px 10px; border: 1px dashed var(--border); border-radius: var(--radius); }
-.back { color: var(--muted-foreground); text-decoration: none; font-size: 13px; }
+.back { justify-self: start; width: fit-content; color: var(--muted-foreground); text-decoration: none; font-size: 13px; }
 .back:hover { color: var(--foreground); }
 
 #toast {
@@ -284,3 +284,10 @@ input:focus-visible, textarea:focus-visible, select:focus-visible { border-color
 
 .icon-btn { width: 36px; height: 36px; padding: 0; color: var(--muted-foreground); }
 .icon-btn:hover { color: var(--foreground); }
+
+.menu { position: relative; }
+.menu-list { position: absolute; right: 0; top: calc(100% + 6px); min-width: 168px; z-index: 50; padding: 4px; background: var(--background); border: 1px solid var(--border); border-radius: 8px; display: grid; }
+.menu-list[hidden] { display: none; }
+.menu-list a { padding: 8px 10px; border-radius: 6px; font-size: 14px; color: var(--foreground); text-decoration: none; }
+.menu-list a:hover, .menu-list a:focus-visible { background: var(--muted); outline: none; }
+.menu-list a[aria-current] { font-weight: 600; }

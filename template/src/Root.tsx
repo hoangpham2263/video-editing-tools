@@ -2,7 +2,7 @@ import React from 'react';
 import {Composition} from 'remotion';
 import {Review} from './Review';
 import type {ReviewProps} from './types';
-import dep from '../edits/dep.json';
+import dep from '../../products/dep-suc-phoi-mau-zutaniq-z4pn/props.json';
 
 export const FPS = 30;
 

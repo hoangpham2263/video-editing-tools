@@ -1,6 +1,6 @@
 #!/bin/zsh
 # Tạo giọng đọc Adam (ElevenLabs) cho từng câu.
-# Dùng: scripts/voice-adam.sh <file câu thoại, mỗi dòng 1 câu> <thư mục xuất>
+# Dùng: scripts/extras/voice-adam.sh <file câu thoại, mỗi dòng 1 câu> <thư mục xuất>
 # Cần biến môi trường ELEVENLABS_API_KEY (đặt trong ~/.zshrc, không dán vào chat).
 # Tuỳ chọn: VOICE_ID (mặc định Adam), MODEL (mặc định eleven_turbo_v2_5, có tiếng Việt).
 set -e

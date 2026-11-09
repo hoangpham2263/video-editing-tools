@@ -178,7 +178,7 @@ async function renderListAsync() {
 
 /* ---------- Video mẫu ---------- */
 async function renderSamples() {
-  app.innerHTML = `<a class="back" href="#">← Sản phẩm</a>
+  app.innerHTML = `<a class="back" href="./">← Sản phẩm</a>
     <h1>Hệ thống</h1>
     <section>
       <div class="row between"><div><h2>Video mẫu</h2><p class="meta" style="margin:2px 0 0">Video tham khảo để phân tích style dựng.</p></div><button class="primary small" id="btnNew">+ Mẫu mới</button></div>
@@ -226,10 +226,10 @@ const tabOf = {}; // tab đang chọn của từng sản phẩm (giữ khi trang
 async function renderProduct(slug) {
   if (!items) {
     app.innerHTML = `<p class="empty">Đang tải…</p>`;
-    try { await load(); } catch (e) { app.innerHTML = `<a class="back" href="#">← Danh sách</a><p class="empty">${esc(e.message)}</p>`; return; }
+    try { await load(); } catch (e) { app.innerHTML = `<a class="back" href="./">← Danh sách</a><p class="empty">${esc(e.message)}</p>`; return; }
   }
   const p = items[slug];
-  if (!p) { app.innerHTML = `<a class="back" href="#">← Danh sách</a><p class="empty">Không tìm thấy sản phẩm.</p>`; return; }
+  if (!p) { app.innerHTML = `<a class="back" href="./">← Danh sách</a><p class="empty">Không tìm thấy sản phẩm.</p>`; return; }
   if (isSample(p)) return renderSample(p);
   const {sources} = split(p);
   // Kết quả chỉ hiện bản mới nhất: 1 video + 1 ảnh bìa
@@ -239,7 +239,7 @@ async function renderProduct(slug) {
   const byId = Object.fromEntries((p.files || []).map((f) => [f.id, f]));
 
   app.innerHTML = `
-    <a class="back" href="#">← Tất cả sản phẩm</a>
+    <a class="back" href="./">← Tất cả sản phẩm</a>
     <div class="p-head">
       <div><h1>${esc(p.name)}</h1>${p.note ? `<p class="meta" style="margin:4px 0 0">${esc(p.note)}</p>` : ''}</div>
       <div class="p-actions">
@@ -293,7 +293,7 @@ function bindCommon(p, slug, back) {
   };
   $('#btnDel').onclick = async () => {
     if (!(await confirmDel(`Xoá "${p.name}"?`, 'Toàn bộ video vào thùng rác Google Drive, khôi phục được trong 30 ngày.'))) return;
-    try { await api(`/${p.slug}`, {method: 'DELETE'}); delete items[p.slug]; cache.set(items); toast('Đã xoá'); location.hash = back; } catch (er) { toast(er.message); }
+    try { await api(`/${p.slug}`, {method: 'DELETE'}); delete items[p.slug]; cache.set(items); toast('Đã xoá'); go(back); } catch (er) { toast(er.message); }
   };
   app.querySelectorAll('[data-del]').forEach((b) => (b.onclick = async () => {
     if (!(await confirmDel('Xoá file này?', `${b.dataset.name} sẽ vào thùng rác Google Drive.`))) return;
@@ -357,14 +357,45 @@ async function openNew(type = 'product') {
 }
 
 /* ---------- Điều hướng ---------- */
+// Về danh sách bằng URL sạch (không dư "#")
+function go(href) {
+  if (!href || href === '#' || href === './') { history.pushState(null, '', location.pathname + location.search); route(); }
+  else location.hash = href;
+}
+document.addEventListener('click', (e) => {
+  const a = e.target.closest('a[href="./"]');
+  if (!a || e.metaKey || e.ctrlKey || e.shiftKey || e.button) return;
+  e.preventDefault();
+  if (location.hash) go('./'); else route();
+});
 function route() {
+  if (location.href.endsWith('#')) history.replaceState(null, '', location.pathname + location.search);
   const m = location.hash.match(/^#\/p\/(.+)$/);
   if (m) renderProduct(decodeURIComponent(m[1]));
   else if (location.hash === '#/he-thong' || location.hash === '#/mau') renderSamples();
   else renderList();
 }
-window.addEventListener('hashchange', route);
+let routing = 0; // hashchange + popstate có thể cùng bắn: gộp 1 lần
+const sched = () => { if (!routing) { routing = 1; setTimeout(() => { routing = 0; route(); }); } };
+window.addEventListener('hashchange', sched);
+window.addEventListener('popstate', sched);
 items = cache.get();
 route();
 // Có bản lưu thì hiện ngay, rồi lấy bản mới nhất ở nền
 if (items) load().then((changed) => changed && route()).catch(() => {});
+
+// Menu header: mở/đóng như menu thường
+(() => {
+  const btn = document.getElementById('menuBtn'), list = document.getElementById('menuList');
+  if (!btn) return;
+  const set = (open) => { list.hidden = !open; btn.setAttribute('aria-expanded', String(open)); };
+  const mark = () => { const h = location.hash || '#'; list.querySelectorAll('a').forEach((a) => a.toggleAttribute('aria-current', a.getAttribute('href') === (h === '#/mau' ? '#/he-thong' : h.startsWith('#/he-thong') ? h : './'))); };
+  btn.addEventListener('click', (e) => { e.stopPropagation(); set(list.hidden); });
+  list.addEventListener('click', () => set(false));
+  document.addEventListener('click', (e) => { if (!e.target.closest('#menu')) set(false); });
+  document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && !list.hidden) { set(false); btn.focus(); } });
+  window.addEventListener('hashchange', () => { set(false); mark(); });
+  window.addEventListener('popstate', () => { set(false); mark(); });
+  document.addEventListener('click', (e) => { if (e.target.closest('a[href="./"]')) setTimeout(mark); });
+  mark();
+})();

@@ -1,6 +1,6 @@
 """Nhạc nền kiểu trend CapCut/TikTok (remix sped-up, EDM-pop) – tự tạo, không bản quyền.
 
-Dùng: python3 scripts/make_music_trend.py <giây> <file .wav> [bpm] [seed]
+Dùng: python3 scripts/extras/make_music_trend.py <giây> <file .wav> [bpm] [seed]
 Hợp âm Am - F - C - G, trống đều mỗi phách, bass nhún, synth dày, giai điệu cao.
 """
 import sys

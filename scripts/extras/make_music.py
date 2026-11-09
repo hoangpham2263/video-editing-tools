@@ -1,6 +1,6 @@
 """Tạo nhạc nền cute gốc (không bản quyền) cho video review.
 
-Dùng: python3 scripts/make_music.py <giây> <file .wav xuất> [bpm]
+Dùng: python3 scripts/extras/make_music.py <giây> <file .wav xuất> [bpm]
 Hợp âm C - G - Am - F, gảy kiểu ukulele + chuông + trống nhẹ.
 """
 import sys
