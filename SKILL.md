@@ -1,6 +1,6 @@
 ---
 name: review-video
-description: Dựng video review sản phẩm TikTok Shop theo style @thokunrw (Remotion + ffmpeg) từ source quay thật, lấy source và đẩy video thành phẩm qua Review Hub (Google Drive). Dùng khi người dùng nói "dựng video", "làm video review", "edit video sản phẩm", "lấy source", "có source mới", "đẩy video lên hub", hoặc gửi file .MOV/.MP4 sản phẩm.
+description: Dựng video review sản phẩm TikTok Shop theo style @thokunrw (Remotion + ffmpeg) từ source quay thật, lấy source và đẩy video thành phẩm qua Cutly (Google Drive). Dùng khi người dùng nói "dựng video", "làm video review", "edit video sản phẩm", "lấy source", "có source mới", "đẩy video lên hub", hoặc gửi file .MOV/.MP4 sản phẩm.
 ---
 
 # Review Video
@@ -14,7 +14,7 @@ Dựng video review dọc 9:16 giống mẫu @thokunrw: cảnh bìa có tiêu đ
 ```text
 SKILL.md
 references/rules.md        quy tắc dựng (ưu tiên cao nhất), giọng phụ đề, ví dụ đã duyệt
-references/hub.md          Review Hub: Drive, trạng thái, lệnh hub.mjs
+references/hub.md          Cutly: Drive, trạng thái, lệnh hub.mjs
 references/style-spec.md   số đo từ video mẫu
 products/<mã>/cuts.txt     cảnh đã chọn của từng sản phẩm (commit vào repo)
 products/<mã>/props.json   tiêu đề + danh sách cảnh + phụ đề (commit vào repo)
@@ -23,7 +23,7 @@ scripts/build.sh           1 lệnh: cắt → render → ảnh bìa [→ up]
 scripts/cut.sh             cắt + chỉnh màu + giữ khung gốc (build.sh gọi)
 scripts/extras/            giọng đọc, nhạc tự tạo – chỉ khi được yêu cầu
 template/                  dự án Remotion (composition "Review")
-docs/                      web Review Hub (GitHub Pages)
+docs/                      web Cutly (GitHub Pages)
 work/<mã>/source|out       file tạm của từng sản phẩm (gitignore, không commit)
 ```
 

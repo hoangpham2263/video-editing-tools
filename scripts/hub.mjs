@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// Review Hub CLI – dữ liệu ở Google Drive qua Worker tools-hub-api ("Tools Hub/Review Video/<mã>/").
+// Cutly CLI – dữ liệu ở Google Drive qua Worker tools-hub-api ("Tools Hub/Review Video/<mã>/").
 import fs from 'node:fs';
 import path from 'node:path';
 import {fileURLToPath} from 'node:url';
