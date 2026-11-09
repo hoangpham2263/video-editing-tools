@@ -70,7 +70,7 @@ function mediaCard(f, poster) {
   const media = isVideo(f) || isImage(f);
   return `<div class="card result">
     ${media ? `<button class="thumb" data-play="${esc(f.id)}" aria-label="Xem ${esc(f.name)}">
-      ${isImage(f) ? `<img src="${esc(f.url)}" alt="" loading="lazy">` : (poster ? `<img src="${esc(poster)}" alt="" loading="lazy">` : `<video data-src="${esc(f.url)}#t=1" muted playsinline preload="none"></video>`)}
+      ${isImage(f) ? `<img src="${esc(f.url)}" alt="" loading="lazy">` : (poster ? `<img src="${esc(poster)}" alt="" loading="lazy">` : `<span class="ext">${esc((f.name.split('.').pop() || '').toUpperCase())}</span>`)}
       <span class="play">${isVideo(f) ? '▶' : '⤢'}</span></button>` : ''}
     <div><div class="fname">${esc(label(f))}</div><div class="meta">${size(f.size)} · ${when(f.uploaded)}</div></div>
     <div class="row"><a class="btn small ${f.kind === 'result' ? 'primary' : ''}" href="${esc(f.download)}">Tải về</a><button class="small ghost danger" title="Xoá file" data-del="${esc(f.id)}" data-name="${esc(f.name)}">Xoá</button></div>
@@ -150,7 +150,7 @@ function renderList() { renderListAsync(); }
 async function renderListAsync() {
   app.innerHTML = `<div class="row between"><h1>Sản phẩm</h1><button class="primary" id="btnNew">+ Sản phẩm mới</button></div>
     <div class="tabs" id="tabs"></div><div class="list" id="list"><p class="empty">Đang tải…</p></div>`;
-  $('#btnNew').onclick = () => $('#dlgNew').showModal();
+  $('#btnNew').onclick = openNew;
   if (!items) {
     try { await load(); } catch (e) { $('#list').innerHTML = `<p class="empty">${esc(e.message)}</p>`; return; }
   }
@@ -227,12 +227,7 @@ async function renderProduct(slug) {
   dropZone($('#drop'), $('#drop input'), (fs) => uploadAll(p, fs, 'source'));
   dropZone($('#dropResult'), $('#dropResult input'), (fs) => uploadAll(p, fs, 'result'));
   app.querySelectorAll('[data-play]').forEach((b) => (b.onclick = () => openPlayer(byId[b.dataset.play])));
-  // Khung xem trước video chỉ tải khi cuộn tới
-  const io = new IntersectionObserver((es) => es.forEach((e) => {
-    if (!e.isIntersecting) return;
-    const v = e.target; v.preload = 'metadata'; v.src = v.dataset.src; io.unobserve(v);
-  }), {rootMargin: '200px'});
-  app.querySelectorAll('video[data-src]').forEach((v) => io.observe(v));
+  // Video source không tải sẵn (29 file MOV nặng làm điện thoại giật), bấm vào mới phát
 
   const patch = (json) => api(`/${p.slug}`, {method: 'PATCH', json});
   $('#status').onchange = async (e) => {
@@ -261,7 +256,9 @@ function ask(id, setup) {
   const dlg = $(`#dlg${id}`), f = $(`#form${id}`);
   setup?.(f);
   return new Promise((resolve) => {
-    f.onsubmit = (e) => { e.preventDefault(); const ok = e.submitter?.value !== 'cancel'; dlg.close(); resolve(ok ? f : null); };
+    const done = (ok) => { dlg.close(); resolve(ok ? f : null); };
+    f.onsubmit = (e) => { e.preventDefault(); if (f.reportValidity()) done(true); }; // Enter trong ô nhập
+    f.querySelectorAll('button[value]').forEach((b) => (b.onclick = (e) => { e.preventDefault(); if (b.value === 'cancel') return done(false); if (f.reportValidity()) done(true); }));
     dlg.oncancel = () => resolve(null);
     dlg.showModal();
   });
@@ -278,13 +275,9 @@ const onOk = {
     } catch (e) { toast(e.message); }
   },
 };
-for (const id of Object.keys(onOk)) {
-  const f = $(`#form${id}`);
-  f.addEventListener('submit', (e) => {
-    e.preventDefault();
-    $(`#dlg${id}`).close();
-    if (e.submitter?.value !== 'cancel') onOk[id](f);
-  });
+async function openNew() {
+  const f = await ask('New', (f) => f.reset());
+  if (f) onOk.New(f);
 }
 
 /* ---------- Điều hướng ---------- */

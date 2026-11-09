@@ -8,7 +8,7 @@
   <link rel="icon" href="brand/favicon.ico" sizes="any">
   <link rel="icon" href="brand/hp-favicon.svg" type="image/svg+xml">
   <link rel="apple-touch-icon" href="brand/apple-touch-icon.png">
-  <link rel="stylesheet" href="app.css?v=16">
+  <link rel="stylesheet" href="app.css?v=18">
 </head>
 <body>
   <header class="top">
@@ -37,8 +37,8 @@
         <textarea name="note" rows="4" placeholder="Màu, thương hiệu, điểm nổi bật, deal, link sản phẩm..."></textarea>
       </label>
       <div class="row end actions">
-        <button value="ok" class="primary">Tạo</button>
-        <button value="cancel" class="ghost" formnovalidate>Huỷ</button>
+        <button type="submit" value="ok" class="primary">Tạo</button>
+        <button type="button" value="cancel" formnovalidate>Huỷ</button>
       </div>
     </form>
   </dialog>
@@ -50,8 +50,8 @@
         <textarea name="note" rows="5" placeholder="Màu, thương hiệu, điểm nổi bật, deal, link sản phẩm..."></textarea>
       </label>
       <div class="row end actions">
-        <button value="ok" class="primary">Lưu</button>
-        <button value="cancel" class="ghost" formnovalidate>Huỷ</button>
+        <button type="submit" value="ok" class="primary">Lưu</button>
+        <button type="button" value="cancel" formnovalidate>Huỷ</button>
       </div>
     </form>
   </dialog>
@@ -61,14 +61,14 @@
       <h2 id="confirmTitle">Xoá?</h2>
       <p class="meta" id="confirmText" style="margin:0 0 8px"></p>
       <div class="row end actions">
-        <button value="ok" class="primary danger-fill">Xoá</button>
-        <button value="cancel" class="ghost" formnovalidate>Huỷ</button>
+        <button type="submit" value="ok" class="primary danger-fill">Xoá</button>
+        <button type="button" value="cancel" formnovalidate>Huỷ</button>
       </div>
     </form>
   </dialog>
 
   <div id="toast" role="status" aria-live="polite"></div>
   <script>document.getElementById("year").textContent = new Date().getFullYear()</script>
-  <script src="app.js?v=16"></script>
+  <script src="app.js?v=18"></script>
 </body>
 </html>
