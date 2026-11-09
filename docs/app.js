@@ -152,7 +152,7 @@ function dropZone(el, input, onFiles) {
   el.ondrop = (e) => { e.preventDefault(); el.classList.remove('over'); onFiles([...e.dataTransfer.files]); };
 }
 const dropHtml = (id, text, big) => `<label class="drop ${big ? 'big' : ''}" id="${id}">
-  <input type="file" multiple accept="video/*,image/*" hidden>
+  <input type="file" multiple hidden>
   <span class="drop-icon" aria-hidden="true"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 16V4M6 10l6-6 6 6M4 20h16"/></svg></span>
   <strong>${text}</strong>
   <span class="meta">Bấm để chọn video, hoặc kéo thả vào đây. Chọn được nhiều file. Giữ nguyên chất lượng, tối đa 5 GB/file.</span>
