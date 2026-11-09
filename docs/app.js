@@ -147,13 +147,10 @@ const dropHtml = (id, text, big) => `<label class="drop ${big ? 'big' : ''}" id=
 /* ---------- Trang danh sách ---------- */
 let filter = 'all';
 const isSample = (p) => p.type === 'sample';
-const navHtml = (cur) => `<div class="seg nav" role="tablist">
-  <a role="tab" href="#" aria-selected="${cur === 'product'}">Sản phẩm</a>
-  <a role="tab" href="#/mau" aria-selected="${cur === 'sample'}">Video mẫu</a>
-</div>`;
+
 function renderList() { renderListAsync(); }
 async function renderListAsync() {
-  app.innerHTML = `${navHtml('product')}<div class="row between"><h1>Sản phẩm</h1><button class="primary" id="btnNew">+ Sản phẩm mới</button></div>
+  app.innerHTML = `<div class="row between"><h1>Sản phẩm</h1><button class="primary" id="btnNew">+ Sản phẩm mới</button></div>
     <div class="tabs" id="tabs"></div><div class="list" id="list"><p class="empty">Đang tải…</p></div>`;
   $('#btnNew').onclick = () => openNew('product');
   if (!items) {
@@ -181,9 +178,16 @@ async function renderListAsync() {
 
 /* ---------- Video mẫu ---------- */
 async function renderSamples() {
-  app.innerHTML = `${navHtml('sample')}<div class="row between"><h1>Video mẫu</h1><button class="primary" id="btnNew">+ Mẫu mới</button></div>
-    <p class="meta" style="margin:-6px 0 0">Video tham khảo để phân tích style dựng, không phải sản phẩm cần làm.</p>
-    <div class="list" id="list"><p class="empty">Đang tải…</p></div>`;
+  app.innerHTML = `<a class="back" href="#">← Sản phẩm</a>
+    <h1>Hệ thống</h1>
+    <section>
+      <div class="row between"><div><h2>Video mẫu</h2><p class="meta" style="margin:2px 0 0">Video tham khảo để phân tích style dựng.</p></div><button class="primary small" id="btnNew">+ Mẫu mới</button></div>
+      <div class="list" id="list"><p class="empty">Đang tải…</p></div>
+    </section>
+    <section>
+      <h2>Lưu trữ</h2>
+      <div class="card meta">Google Drive: <b>Tools Hub/Review Video/</b><br>· <b>Sản phẩm/</b>&lt;sản phẩm&gt;/Source, Kết quả<br>· <b>Video mẫu/</b>&lt;mẫu&gt;/</div>
+    </section>`;
   $('#btnNew').onclick = () => openNew('sample');
   if (!items) {
     try { await load(); } catch (e) { $('#list').innerHTML = `<p class="empty">${esc(e.message)}</p>`; return; }
@@ -199,7 +203,7 @@ function renderSample(p) {
   const files = [...(p.files || [])].sort((a, b) => a.name.localeCompare(b.name));
   const byId = Object.fromEntries(files.map((f) => [f.id, f]));
   app.innerHTML = `
-    <a class="back" href="#/mau">← Video mẫu</a>
+    <a class="back" href="#/he-thong">← Hệ thống</a>
     <div class="p-head">
       <div><h1>${esc(p.name)}</h1>${p.note ? `<p class="meta" style="margin:4px 0 0">${esc(p.note)}</p>` : ''}</div>
       <div class="p-actions">
@@ -214,7 +218,7 @@ function renderSample(p) {
     </section>`;
   dropZone($('#drop'), $('#drop input'), (fs) => uploadAll(p, fs, 'source'));
   app.querySelectorAll('[data-play]').forEach((b) => (b.onclick = () => openPlayer(byId[b.dataset.play])));
-  bindCommon(p, p.slug, '#/mau');
+  bindCommon(p, p.slug, '#/he-thong');
 }
 
 /* ---------- Trang chi tiết ---------- */
@@ -356,7 +360,7 @@ async function openNew(type = 'product') {
 function route() {
   const m = location.hash.match(/^#\/p\/(.+)$/);
   if (m) renderProduct(decodeURIComponent(m[1]));
-  else if (location.hash === '#/mau') renderSamples();
+  else if (location.hash === '#/he-thong' || location.hash === '#/mau') renderSamples();
   else renderList();
 }
 window.addEventListener('hashchange', route);

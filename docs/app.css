@@ -281,3 +281,6 @@ input:focus-visible, textarea:focus-visible, select:focus-visible { border-color
 .seg.nav a { display: grid; place-items: center; height: 36px; border-radius: calc(var(--radius) - 2px); text-decoration: none; color: var(--muted-foreground); font-weight: 500; }
 .seg.nav a[aria-selected="true"] { background: var(--background); color: var(--foreground); }
 @media (max-width: 639px) { .seg.nav a { height: 40px; font-size: 15px; } }
+
+.icon-btn { width: 36px; height: 36px; padding: 0; color: var(--muted-foreground); }
+.icon-btn:hover { color: var(--foreground); }
