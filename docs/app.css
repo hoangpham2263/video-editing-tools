@@ -250,3 +250,6 @@ button:focus, .btn:focus { outline: none; }
 .btn-danger:hover { background: color-mix(in srgb, var(--destructive) 8%, transparent); }
 .danger-fill { background: var(--destructive); color: #fff; }
 .danger-fill:hover { background: color-mix(in srgb, var(--destructive) 88%, #000); }
+
+/* Không đổ bóng: card, nút, tab, badge, hộp thoại */
+.card, button, .btn, .tabs button, .badge, .seg button[aria-selected="true"], dialog, #toast { box-shadow: none !important; }
