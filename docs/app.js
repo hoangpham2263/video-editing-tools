@@ -129,12 +129,6 @@ const dropHtml = (id, text, big) => `<label class="drop ${big ? 'big' : ''}" id=
 let filter = 'all';
 async function renderList() {
   app.innerHTML = `<div class="row between"><div><h1>Sản phẩm</h1><p class="meta" style="margin:4px 0 0">Mỗi sản phẩm là một video cần làm.</p></div><button class="primary" id="btnNew">+ Sản phẩm mới</button></div>
-    <details class="card guide" id="guide"><summary><b>Cách dùng</b> <span class="meta">(3 bước)</span></summary>
-      <ol class="guide-steps">
-        <li><b>Tạo sản phẩm</b><span>Bấm "+ Sản phẩm mới", nhập tên và ghi chú (màu, thương hiệu, deal).</span></li>
-        <li><b>Up video quay</b><span>Mở sản phẩm, bấm ô "Up source", chọn video từ máy hoặc điện thoại.</span></li>
-        <li><b>Lấy video về đăng</b><span>Khi trạng thái là "Có kết quả", mở sản phẩm, xem rồi bấm "Tải về".</span></li>
-      </ol></details>
     <div class="tabs" id="tabs"></div><div class="list" id="list"><p class="empty">Đang tải…</p></div>`;
   $('#btnNew').onclick = () => $('#dlgNew').showModal();
   let items = [];
