@@ -3,7 +3,9 @@
 // Nhanh kiểu memories: giữ danh sách trong bộ nhớ (+ bản lưu trong trình duyệt để mở trang là hiện ngay),
 // sửa/xoá/up xong chỉ thay đúng sản phẩm đó từ phản hồi, không tải lại cả trang.
 const API = 'https://tools-hub-api.hoangpham2263.workers.dev';
-const STATUS = {new: 'Chờ dựng', editing: 'Đang dựng', done: 'Có kết quả', posted: 'Đã đăng'};
+// 3 trạng thái cho gọn. "editing" cũ coi như "Chờ edit".
+const STATUS = {new: 'Chờ edit', done: 'Đã edit', posted: 'Đã đăng'};
+const st = (p) => (STATUS[p.status] ? p.status : 'new');
 const isVideo = (f) => /^video\//.test(f.mime || '') || /\.(mp4|mov|m4v|webm)$/i.test(f.name);
 const isImage = (f) => /^image\//.test(f.mime || '') || /\.(png|jpe?g|webp|gif)$/i.test(f.name);
 const $ = (s, el = document) => el.querySelector(s);
@@ -156,15 +158,15 @@ async function renderListAsync() {
   const tabs = [['all', 'Tất cả'], ...Object.entries(STATUS)];
   const draw = () => {
     $('#tabs').innerHTML = tabs.map(([k, v]) => {
-      const n = k === 'all' ? list.length : list.filter((i) => i.status === k).length;
+      const n = k === 'all' ? list.length : list.filter((i) => st(i) === k).length;
       return `<button data-k="${k}" aria-pressed="${filter === k}"><span class="k">${v}</span><span class="v">${n}</span></button>`;
     }).join('');
     $('#tabs').querySelectorAll('button').forEach((b) => (b.onclick = () => { filter = b.dataset.k; draw(); }));
-    const shown = list.filter((i) => filter === 'all' || i.status === filter);
+    const shown = list.filter((i) => filter === 'all' || st(i) === filter);
     $('#list').innerHTML = shown.length ? shown.map((p) => {
       const {sources, results} = split(p);
             return `<a class="card item" href="#/p/${encodeURIComponent(p.slug)}">
-        <div class="row between"><span class="name">${esc(p.name)}</span><span class="badge s-${p.status}">${STATUS[p.status]}</span></div>
+        <div class="row between"><span class="name">${esc(p.name)}</span><span class="badge s-${st(p)}">${STATUS[st(p)]}</span></div>
         <div class="meta">${sources.length ? `${sources.length} video quay` : 'Chưa có video quay'} · ${results.length ? `${results.length} file kết quả` : 'chưa có kết quả'} · cập nhật ${when(p.updatedAt)}</div>
       </a>`;
     }).join('') : `<p class="empty">${list.length ? 'Không có sản phẩm ở mục này.' : 'Chưa có sản phẩm nào. Bấm "+ Sản phẩm mới" để bắt đầu.'}</p>`;
@@ -173,6 +175,7 @@ async function renderListAsync() {
 }
 
 /* ---------- Trang chi tiết ---------- */
+const tabOf = {}; // tab đang chọn của từng sản phẩm (giữ khi trang vẽ lại)
 async function renderProduct(slug) {
   if (!items) {
     app.innerHTML = `<p class="empty">Đang tải…</p>`;
@@ -184,32 +187,42 @@ async function renderProduct(slug) {
   // Kết quả chỉ hiện bản mới nhất: 1 video + 1 ảnh bìa
   const newest = [...split(p).results].sort((a, b) => (b.uploaded || '').localeCompare(a.uploaded || ''));
   const results = [newest.find(isVideo), newest.find(isImage)].filter(Boolean);
+  const tab = tabOf[slug] || (results.length ? 'result' : 'source');
   const byId = Object.fromEntries((p.files || []).map((f) => [f.id, f]));
 
   app.innerHTML = `
     <a class="back" href="#">← Tất cả sản phẩm</a>
-    <div class="row between">
+    <div class="p-head">
       <div><h1>${esc(p.name)}</h1>${p.note ? `<p class="meta" style="margin:4px 0 0">${esc(p.note)}</p>` : ''}</div>
-      <div class="row">
-        <select id="status" class="small-select" aria-label="Trạng thái">${Object.entries(STATUS).map(([k, v]) => `<option value="${k}" ${k === p.status ? 'selected' : ''}>${v}</option>`).join('')}</select>
-        <button id="btnNote" class="small ghost">Sửa ghi chú</button>
-        <button id="btnDel" class="small ghost danger">Xoá</button>
+      <div class="p-actions">
+        <select id="status" class="small-select" aria-label="Trạng thái">${Object.entries(STATUS).map(([k, v]) => `<option value="${k}" ${k === st(p) ? 'selected' : ''}>${v}</option>`).join('')}</select>
+        <button id="btnNote" class="small">Sửa ghi chú</button>
+        <button id="btnDel" class="small danger btn-danger">Xoá</button>
       </div>
     </div>
 
-    <section>
-      <div class="row between"><h2>Source</h2><span class="meta">${sources.length} file</span></div>
+    <div class="seg" role="tablist">
+      <button role="tab" data-tab="result" aria-selected="${tab === 'result'}">Kết quả <span>${results.length}</span></button>
+      <button role="tab" data-tab="source" aria-selected="${tab === 'source'}">Source <span>${sources.length}</span></button>
+    </div>
+
+    <section data-panel="result" ${tab === 'result' ? '' : 'hidden'}>
+      ${results.length ? `<div class="results">${results.map((f) => mediaCard(f, isVideo(f) ? newest.find(isImage)?.url : '')).join('')}</div>` : '<p class="empty small">Chưa có kết quả.</p>'}
+      ${dropHtml('dropResult', 'Up kết quả', false)}
+      <div class="files" id="upsResult"></div>
+    </section>
+
+    <section data-panel="source" ${tab === 'source' ? '' : 'hidden'}>
       ${dropHtml('drop', 'Up source', !sources.length)}
       <div class="files" id="ups"></div>
       ${sources.length ? `<div class="results">${sources.map((f) => mediaCard(f)).join('')}</div>` : ''}
-    </section>
-
-    <section>
-      <div class="row between"><h2>Kết quả</h2><span class="meta">${results.length} file</span></div>
-      ${results.length ? `<div class="results">${results.map((f) => mediaCard(f, isVideo(f) ? newest.find(isImage)?.url : '')).join('')}</div>` : ''}
-      ${dropHtml('dropResult', 'Up kết quả', false)}
-      <div class="files" id="upsResult"></div>
     </section>`;
+
+  app.querySelectorAll('[data-tab]').forEach((b) => (b.onclick = () => {
+    tabOf[slug] = b.dataset.tab;
+    app.querySelectorAll('[data-tab]').forEach((x) => x.setAttribute('aria-selected', x === b));
+    app.querySelectorAll('[data-panel]').forEach((x) => (x.hidden = x.dataset.panel !== b.dataset.tab));
+  }));
 
   dropZone($('#drop'), $('#drop input'), (fs) => uploadAll(p, fs, 'source'));
   dropZone($('#dropResult'), $('#dropResult input'), (fs) => uploadAll(p, fs, 'result'));

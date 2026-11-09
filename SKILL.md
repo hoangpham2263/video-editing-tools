@@ -27,7 +27,7 @@ Thư mục làm việc cho từng sản phẩm: `work/<slug>/` trong skill (đã
 ## Quy trình
 
 1. **Lấy source**
-   - Từ Review Hub: `node scripts/hub.mjs list` rồi `node scripts/hub.mjs pull <slug>` → tải về `work/<slug>/source/`, đặt trạng thái "Đang dựng".
+   - Từ Review Hub: `node scripts/hub.mjs list` rồi `node scripts/hub.mjs pull <slug>` → tải về `work/<slug>/source/`.
    - Hoặc người dùng gửi đường dẫn file: chép vào `work/<slug>/source/`.
 2. **Xem source**: làm dải khung hình mỗi clip (ffmpeg `fps=4,scale=110:-2,tile=12x2`), ghi lại clip nào là bìa, mở hàng, chi tiết, có người, mốc giây của từng hành động. Kiểm tra màu và tên thương hiệu trên khung gốc.
 3. **Chọn cảnh** theo `rules.md`, viết `template/edits/<slug>.cuts.txt`:
@@ -43,7 +43,7 @@ Thư mục làm việc cho từng sản phẩm: `work/<slug>/` trong skill (đã
    npx remotion still src/index.ts Review ../work/<slug>/out/<slug>_cover.png --props=edits/<slug>.json --frame=80
    ```
 7. **Tự kiểm tra**: xuất vài still ở giữa từng cảnh (`--frame`), đối chiếu phụ đề với hình, màu, chính tả, tên thương hiệu in hoa, không cắt gần, không khựng ở đầu cảnh.
-8. **Giao**: mở thư mục `work/<slug>/out/` cho người dùng xem. Khi người dùng duyệt thì `node scripts/hub.mjs push <slug> work/<slug>/out/*.mp4 work/<slug>/out/*_cover.png` (đặt trạng thái "Có kết quả"). Một sản phẩm có thể có nhiều video kết quả.
+8. **Giao**: mở thư mục `work/<slug>/out/` cho người dùng xem. Khi người dùng duyệt thì `node scripts/hub.mjs push <slug> work/<slug>/out/*.mp4 work/<slug>/out/*_cover.png` (tự chuyển "Đã edit"). Một sản phẩm có thể có nhiều video kết quả.
 
 9. **Lưu cách dựng**: giữ `template/edits/<slug>.cuts.txt` và `template/edits/<slug>.json` trong repo skill (commit khi người dùng yêu cầu) để lần sau sửa/dựng lại.
 
@@ -55,7 +55,7 @@ Web: https://hoangpham.is-a.dev/review-video/ (mã nguồn `docs/`, không cần
 
 - Drive: `Tools Hub/Review Video/<mã>/Source/` và `.../Kết quả/`. Danh sách sản phẩm lưu trong KV của Worker.
 - Up file: Worker mở phiên upload, trình duyệt/CLI gửi thẳng lên Google, giữ nguyên chất lượng, tối đa 5 GB/file.
-- Trạng thái: `new | editing | done | posted` (Chờ dựng / Đang dựng / Có kết quả / Đã đăng).
+- Trạng thái (3): `new | done | posted` = Chờ edit / Đã edit / Đã đăng. Đẩy kết quả lên tự chuyển sang Đã edit.
 - Web chỉ hiện video và ảnh bìa kết quả mới nhất.
 - Video mẫu để phân tích style: sản phẩm `video-mau-thokunrw-phan-tich-style-o3e6`.
 

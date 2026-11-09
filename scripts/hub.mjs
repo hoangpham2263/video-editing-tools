@@ -6,7 +6,8 @@ import {fileURLToPath} from 'node:url';
 
 const API = process.env.REVIEW_HUB_API || 'https://tools-hub-api.hoangpham2263.workers.dev';
 const SKILL = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
-const STATUS = {new: 'Chờ dựng', editing: 'Đang dựng', done: 'Có kết quả', posted: 'Đã đăng'};
+const STATUS = {new: 'Chờ edit', done: 'Đã edit', posted: 'Đã đăng'};
+const st = (p) => (STATUS[p.status] ? p.status : 'new');
 const mb = (b) => (b / 1e6).toFixed(1) + ' MB';
 const die = (m) => { console.error(m); process.exit(1); };
 const MIME = {'.mp4': 'video/mp4', '.mov': 'video/quicktime', '.png': 'image/png', '.jpg': 'image/jpeg', '.jpeg': 'image/jpeg'};
@@ -28,11 +29,11 @@ const cmds = {
   async list() {
     const ps = await api('');
     if (!ps.length) return console.log('Chưa có sản phẩm.');
-    for (const p of ps) console.log(`${p.slug.padEnd(36)} ${STATUS[p.status].padEnd(11)} ${files(p).length} source, ${files(p, 'result').length} kết quả  ${p.name}`);
+    for (const p of ps) console.log(`${p.slug.padEnd(36)} ${STATUS[st(p)].padEnd(9)} ${files(p).length} source, ${files(p, 'result').length} kết quả  ${p.name}`);
   },
   async show(slug) {
     const p = await api(`/${slug}`);
-    console.log(`${p.name}  [${STATUS[p.status]}]\n${p.note ? `Ghi chú: ${p.note}\n` : ''}`);
+    console.log(`${p.name}  [${STATUS[st(p)]}]\n${p.note ? `Ghi chú: ${p.note}\n` : ''}`);
     for (const k of ['source', 'result']) {
       console.log(`${k === 'source' ? 'Source' : 'Kết quả'} (${files(p, k).length}):`);
       for (const f of files(p, k)) console.log(`  ${f.name}  ${mb(f.size)}`);
@@ -60,7 +61,6 @@ const cmds = {
       await fs.promises.writeFile(out, Buffer.from(await r.arrayBuffer()));
       console.log(`↓ ${f.name}  ${mb(f.size)}`);
     }
-    if (p.status === 'new') await api(`/${slug}`, {method: 'PATCH', json: {status: 'editing'}});
     console.log(`Xong: ${dir}`);
   },
   async push(slug, ...paths) {
@@ -97,10 +97,10 @@ if (!cmds[cmd]) {
   list                          danh sách sản phẩm
   show <mã>                     ghi chú + file
   create "<tên>" ["ghi chú"]    tạo sản phẩm
-  pull <mã> [thư-mục]           tải source về (mặc định work/<mã>/source), đặt "Đang dựng"
-  push <mã> <file...>           đẩy video/ảnh bìa kết quả, đặt "Có kết quả"
+  pull <mã> [thư-mục]           tải source về (mặc định work/<mã>/source)
+  push <mã> <file...>           đẩy video/ảnh bìa kết quả, đặt "Đã edit"
   push-source <mã> <file...>    up source từ máy
-  status <mã> <new|editing|done|posted>`);
+  status <mã> <new|done|posted>   (Chờ edit | Đã edit | Đã đăng)`);
   process.exit(cmd ? 1 : 0);
 }
 await cmds[cmd](...args);
