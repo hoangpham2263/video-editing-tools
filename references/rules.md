@@ -8,6 +8,7 @@
 - Cảnh đầu là **ảnh bìa**: sản phẩm rõ nét + tiêu đề 2 dòng. Luôn xuất kèm `cover.png` (frame 80).
 - Tiêu đề: dòng 1 là loại sản phẩm, dòng 2 là "Nhà <THƯƠNG HIỆU>". **Tên thương hiệu viết IN HOA.**
 - Trình tự hợp lý: bìa → mở hàng → chi tiết → dùng thử/mang thử → kết (deal).
+- Sản phẩm là set/nguyên liệu (bánh, đồ ăn, mỹ phẩm…): **ưu tiên cảnh nguyên liệu thật** (mở hộp, các gói nguyên liệu, đổ/trộn) ngay sau bìa để tạo uy tín. Source không có thì báo người dùng và gợi ý quay bổ sung.
 - Mỗi cảnh khoảng 3 giây, không cắt vụn.
 - Cảnh có hành động (kéo túi, rút lót, gắn charm) thì bắt đầu cảnh **ngay lúc hành động diễn ra** để chuyển cảnh mượt, không khựng.
 
