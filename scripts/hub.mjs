@@ -14,11 +14,14 @@ const MIME = {'.mp4': 'video/mp4', '.mov': 'video/quicktime', '.png': 'image/png
 
 async function api(p, opts = {}) {
 
-  const r = await fetch(`${API}/api/video-editing-tools${p}`, {
+  const go = () => fetch(`${API}/api/video-editing-tools${p}`, {
     method: opts.method || 'GET',
     headers: {origin: 'https://hoangpham.is-a.dev', ...(opts.json ? {'content-type': 'application/json'} : {})},
     body: opts.json ? JSON.stringify(opts.json) : undefined,
+    signal: AbortSignal.timeout(60000),
   });
+  let r;
+  for (let t = 0; ; t++) { try { r = await go(); break; } catch (e) { if (t >= 3) throw e; await new Promise((ok) => setTimeout(ok, 3000)); } }
   const d = await r.json().catch(() => ({}));
   if (!r.ok) die(d.error || `Lỗi ${r.status}`);
   return d;
