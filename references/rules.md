@@ -16,7 +16,7 @@
 
 - Giữ nguyên khung như lúc quay, **không phóng to, không cắt gần**.
 - Video dọc 9:16: để tràn khung như gốc.
-- Video ngang: nền mờ phía trên và dưới, ở giữa 2 bản giống nhau đặt cạnh nhau (trái 50%, phải 50%), mỗi bản cắt đều 2 bên (`scripts/cut.sh` tự làm).
+- Video ngang: nền mờ phía trên và dưới, ở giữa 2 bản giống nhau đặt cạnh nhau (trái 50%, phải 50%), mỗi bản cắt đều 2 bên (`scripts/build.mjs` tự làm).
 
 ## Cảnh có người
 
