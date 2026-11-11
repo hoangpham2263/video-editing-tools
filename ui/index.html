@@ -1,0 +1,425 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Video Editing Tools</title>
+<link rel="icon" href="/icon.svg">
+<link rel="stylesheet" href="/core/assets/tool.css">
+<script src="/core/assets/hub.js" defer></script>
+<style>
+/* Thin management layer over scripts/ (same shell as social-autopilot): the agents analyze and build; this window
+   only creates projects, takes files, copies prompts and reviews. Text weight 400; states by border colour only. */
+/* ----- base layout, copied from social-autopilot ui/index.html -----
+   Layout: the window is one flex column (header, tabs, the page); the page fills the rest of the height and scrolls
+   inside, so there is no dead space below the content. */
+* { font-weight: 400; }
+b, strong, h1, h2, h3, th { font-weight: 400; }
+a { color: #0b57d0; }
+html, body { height: 100%; }
+main { height: 100vh; box-sizing: border-box; display: flex; flex-direction: column; min-height: 0; }
+main > header, main > nav, main > .setup-status { flex: 0 0 auto; }
+.page { flex: 1 1 auto; min-height: 0; overflow: auto; }
+.page[hidden] { display: none; }
+.page:not([hidden]) { display: flex; flex-direction: column; }
+.page > /* Log: one compact row per run; the detail opens in the overlay. */
+.log-row { display: flex; align-items: center; gap: 12px; padding: 10px 12px; background: #fff; border: 1px solid var(--line); margin-bottom: -1px; cursor: pointer; min-width: 0; }
+.log-row:hover { border-color: #0078d7; position: relative; }
+.log-row .when { flex: 0 0 140px; white-space: nowrap; }
+.log-row .what { flex: 0 0 auto; white-space: nowrap; color: var(--muted); }
+.log-row .head { flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.dry { color: #b06000; }
+.dot-amber { background: #b06000; }
+.lb .log-detail { flex: 1 1 auto; overflow: auto; padding: 16px; background: #fff; display: grid; gap: 12px; align-content: start; }
+.field[hidden] { display: none; }
+.app-foot { margin-top: auto; }
+h3 .dot.after { margin: 0 0 0 8px; }
+/* Log: one compact row per run; the detail opens in the overlay. */
+.log-row { display: flex; align-items: center; gap: 12px; padding: 10px 12px; background: #fff; border: 1px solid var(--line); margin-bottom: -1px; cursor: pointer; min-width: 0; }
+.log-row:hover { border-color: #0078d7; position: relative; }
+.log-row .when { flex: 0 0 140px; white-space: nowrap; }
+.log-row .what { flex: 0 0 auto; white-space: nowrap; color: var(--muted); }
+.log-row .head { flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.dry { color: #b06000; }
+.dot-amber { background: #b06000; }
+.lb .log-detail { flex: 1 1 auto; overflow: auto; padding: 16px; background: #fff; display: grid; gap: 12px; align-content: start; }
+.app-foot { flex: 0 0 auto; padding: 16px 0 4px; text-align: center; font-size: 11px; color: var(--muted); }
+nav.tabs { display: flex; margin: 0 0 12px; }
+nav.tabs button { height: var(--ctl-h); padding: var(--ctl-pad); font: inherit; font-size: var(--ctl-font); background: #e1e1e1; border: var(--ctl-border); margin-right: -1px; cursor: default; }
+nav.tabs button:hover { border-color: #0078d7; position: relative; }
+nav.tabs button[aria-pressed="true"] { background: #fff; border-color: var(--accent); position: relative; }
+.cards { display: grid; gap: 10px; }
+.card { background: #fff; border: 1px solid var(--line); padding: 10px 12px; }
+.card.ok { border-color: var(--accent); }
+.card.todo { border-color: #b06000; }
+.card .card-msg:empty { display: none; }
+.unlinked { margin-top: 24px; }
+.unlinked .row { display: flex; gap: 12px; align-items: center; padding: 6px 0; border-bottom: 1px solid var(--line); }
+.unlinked .row .name { flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.card h3 { margin: 0 0 4px; font-size: 15px; }
+.meta { color: var(--muted); font-size: 12px; }
+.muted { color: var(--muted); }
+.missing { margin: 4px 0 0; padding-left: 18px; color: #b06000; font-size: 12px; }
+.ok-text { color: #006400; } .bad-text { color: rgb(176, 0, 0); } .warn-text { color: #b06000; }
+.status-tag { display: inline-block; padding: 1px 8px; border: 1px solid var(--line); font-size: 12px; }
+.status-tag.c-green { border-color: var(--accent); } .status-tag.c-amber { border-color: #b06000; } .status-tag.c-red { border-color: rgb(176, 0, 0); }
+.card .acts { display: flex; gap: 6px; flex-wrap: wrap; justify-content: flex-end; }
+.picker { margin-top: 8px; padding-top: 8px; border-top: 1px solid var(--line); }
+.picker .found label { display: flex; gap: 6px; align-items: center; margin: 0; padding: 3px 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.dot { display: inline-block; width: 10px; height: 10px; border-radius: 50%; margin-right: 8px; vertical-align: middle; flex: 0 0 auto; } .dot-green { background: #006400; } .dot-red { background: rgb(176, 0, 0); } .dot-grey { background: var(--line); }
+.row-actions { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin-top: 8px; }
+.row-actions + :not(.msg):not([hidden]) { margin-top: 16px; }
+/* Page header row (brand edit): back button and title. */
+.page-head { display: flex; gap: 12px; align-items: center; margin: 0 0 24px; }
+.page-head h2 { margin: 0; font-size: 16px; }
+#brandForm .field.wide { max-width: 720px; }
+#brandForm .brand-note { margin-bottom: 12px; }
+.missing.flush { margin: 0; }
+.tiles.spaced { margin-top: 8px; }
+fieldset.spaced { margin-top: 24px; }
+.placeholder-media { aspect-ratio: 1 / 1; background: #e4e6eb; }
+fieldset { border: 1px solid var(--line); background: #fff; padding: 10px 12px; margin: 0 0 12px; min-width: 0; }
+legend { padding: 0 4px; color: var(--ink); }
+table.edit { width: 100%; border-collapse: collapse; }
+table.edit th { text-align: left; color: var(--muted); font-size: 12px; padding: 4px; }
+table.edit td { padding: 3px 4px; vertical-align: middle; }
+.table-wrap { overflow-x: auto; }
+.inline { display: flex; gap: 12px; flex-wrap: wrap; align-items: center; }
+.inline label { display: flex; gap: 6px; align-items: center; margin: 0; }
+.grid2 { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 0 12px; }
+.msg { white-space: pre-wrap; }
+.msg:empty { display: none; }
+textarea.prompt { min-height: 200px; font: 12.5px/1.5 Consolas, ui-monospace, monospace; }
+details > summary { cursor: default; color: var(--muted); font-size: 12px; }
+details[open] > summary { margin-bottom: 6px; }
+.kv { display: grid; grid-template-columns: max-content 1fr; gap: 4px 14px; margin: 0; }
+.kv dt { color: var(--muted); } .kv dd { margin: 0; }
+/* Lists inside a field (posting times, sources): one row per entry, controls at the shared height. */
+.slot { display: flex; gap: 8px; margin-bottom: 8px; align-items: center; }
+.slot select { width: 120px; } .slot input[type=time], .slot input.time { width: 100px; }
+.slot input[type=text], .src-url { flex: 1 1 auto; min-width: 0; }
+.card .head-row { display: flex; align-items: center; gap: 8px; } .card .head-row h3 { flex: 1 1 auto; margin: 0 0 4px; }
+/* ----- this tool ----- */
+/* Prompt: options rows, Copy prompt, Run progress, then the prompt filling the rest of the window. */
+#page-prompt:not([hidden]) { display: flex; flex-direction: column; overflow: hidden; }
+#page-prompt .fields, #page-prompt .actions { flex: 0 0 auto; }
+#prText { flex: 1 1 auto; min-height: 200px; width: 100%; box-sizing: border-box; resize: none; overflow: auto; background: #fafafa; }
+#page-prompt .run-panel { flex: 0 0 auto; margin: 0 0 16px; display: grid; gap: 8px; }
+.run-steps { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: 6px 8px; }
+.run-steps li { display: flex; align-items: center; padding: 2px 8px; border: 1px solid transparent; font-size: 12.5px; white-space: nowrap; }
+.run-steps li .dot { margin-right: 6px; width: 8px; height: 8px; }
+.run-steps li.now { border-color: var(--accent); }
+.run-steps li.pending { color: var(--muted); }
+.dot-run { background: var(--accent); }
+.run-sum { display: flex; flex-wrap: wrap; gap: 4px 12px; align-items: center; }
+.run-detail { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.run-detail:empty { display: none; }
+pre { white-space: pre-wrap; word-break: break-word; font: 12.5px/1.45 var(--font); margin: 4px 0 0; max-height: 320px; overflow: auto; }
+/* One card template for every grid: media on top, title row, meta, actions pinned to the bottom. */
+.tiles { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 12px; margin: 0 0 24px; }
+.tile { display: flex; flex-direction: column; gap: 6px; background: #fff; border: 1px solid var(--line); padding: 8px; min-width: 0; }
+.tile:hover { border-color: #0078d7; }
+.tile .tile-img { width: 100%; aspect-ratio: 9 / 16; max-height: 320px; object-fit: contain; display: block; background: #111; border: 1px solid var(--line); box-sizing: border-box; }
+.tile .tile-img.none { display: grid; place-items: center; color: var(--muted); font-size: 12px; border-style: dashed; background: var(--control); }
+.tile .cover { width: 48px; height: 48px; object-fit: cover; border: 1px solid var(--line); }
+.tile .tile-title { display: flex; align-items: center; gap: 6px; min-width: 0; white-space: nowrap; }
+.tile .tile-title .t { flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+.tile .tile-sub { color: var(--muted); font-size: 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.tile .tile-foot { margin-top: auto; display: flex; align-items: center; gap: 6px; flex-wrap: wrap; min-height: 24px; }
+.tile .tile-foot .btn { height: 24px; padding: 0 8px 2px; font-size: 12px; }
+.tile details summary { font-size: 12px; color: var(--muted); cursor: pointer; }
+.card.open-card { cursor: pointer; } .card.open-card:hover { border-color: #0078d7; }
+/* Drop zone: border only, accent while a file is dragged over. */
+.drop { display: grid; place-items: center; gap: 8px; min-height: 72px; padding: 12px; border: 1px dashed var(--line); background: #fff; color: var(--muted); text-align: center; margin: 0 0 16px; cursor: pointer; }
+.drop.over { border-color: var(--accent); color: var(--ink); }
+.files { list-style: none; margin: 0 0 24px; padding: 0; display: grid; gap: 4px; }
+.files li { display: flex; gap: 8px; align-items: center; padding: 4px 8px; background: #fff; border: 1px solid var(--line); font-size: 12.5px; }
+.files li .n { flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.files li .btn { height: 24px; padding: 0 8px 2px; font-size: 12px; }
+h3.block { margin: 0 0 12px; font-size: 14px; }
+#page-settings .kv { grid-template-columns: 160px minmax(0, 1fr); align-items: center; }
+#page-settings .kv dd { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; min-height: var(--ctl-h); }
+#page-settings legend .btn { margin-left: 8px; height: 24px; }
+</style>
+</head>
+<body>
+<main>
+  <header><img src="/icon.svg" alt=""><h1>Video Editing Tools</h1></header>
+  <div id="setupStatus" class="setup-status" hidden></div>
+  <nav class="tabs" id="tabs">
+    <button type="button" data-page="overview">Overview</button>
+    <button type="button" data-page="project">Project</button>
+    <button type="button" data-page="videos">Videos</button>
+    <button type="button" data-page="prompt">Prompt</button>
+    <button type="button" data-page="log">Log</button>
+    <button type="button" data-page="settings">Settings</button>
+  </nav>
+
+  <section class="page" id="page-overview" hidden>
+    <fieldset><legend>New project</legend>
+      <div class="fields">
+        <div class="field wide"><label for="npName">Name</label><input type="text" id="npName" placeholder="e.g. Lamp review"></div>
+        <div class="field wide"><label for="npNote">Note</label><input type="text" id="npNote" placeholder="optional"></div>
+        <div class="field"><label for="npLang">Caption language</label><select id="npLang"><option value="vi">Vietnamese</option><option value="en">English</option><option value="none">No captions</option></select></div>
+      </div>
+      <div class="actions"><button class="btn primary" type="button" id="npCreate">Create project</button><span class="msg" id="npMsg"></span></div>
+    </fieldset>
+    <div class="cards" id="ovList"><div class="meta">Loading…</div></div>
+  </section>
+
+  <section class="page" id="page-project" hidden>
+    <div class="fields">
+      <div class="field"><label for="pjSel">Project</label><select id="pjSel"></select></div>
+      <div class="field auto"><span class="label">&nbsp;</span><span class="meta inline-control" id="pjInfo"></span></div>
+    </div>
+    <div id="pjBody" class="meta">Pick a project.</div>
+  </section>
+
+  <section class="page" id="page-videos" hidden>
+    <div class="fields">
+      <div class="field"><label for="vdProject">Project</label><select id="vdProject"><option value="">All</option></select></div>
+      <div class="field auto"><span class="label">Show</span><span class="seg" id="vdState" role="group" aria-label="Show"></span></div>
+    </div>
+    <div id="vdList"></div>
+  </section>
+
+  <section class="page" id="page-prompt" hidden>
+    <div class="fields">
+      <div class="field auto"><span class="label">Mode</span><span class="seg" id="prMode" role="group" aria-label="Mode"></span></div>
+    </div>
+    <div class="fields">
+      <div class="field"><label for="prAgent">Agent</label><select id="prAgent"><option value="claude">Claude Code</option><option value="codex">Codex</option></select></div>
+      <div class="field"><label for="prProject">Project</label><select id="prProject"></select></div>
+      <div class="field"><label for="prSample">Sample</label><select id="prSample"></select></div>
+    </div>
+    <div class="actions">
+      <button class="btn primary" type="button" id="prCopy">Copy prompt</button>
+      <span class="meta" id="prMsg">Paste into Claude Code / Codex opened in the tool folder</span>
+    </div>
+    <fieldset class="run-panel" id="prRun"><legend>Run progress</legend>
+      <div class="run-sum" id="prRunSum"><span class="meta">Loading…</span></div>
+      <ol class="run-steps" id="prRunSteps"></ol>
+      <div class="meta run-detail" id="prRunDetail"></div>
+    </fieldset>
+    <textarea class="prompt" id="prText" spellcheck="false" readonly></textarea>
+  </section>
+
+  <section class="page" id="page-log" hidden>
+    <div class="fields">
+      <div class="field"><label for="lgProject">Project</label><select id="lgProject"><option value="">All</option></select></div>
+      <div class="field auto"><span class="label">Mode</span><span class="seg" id="lgMode" role="group" aria-label="Mode"></span></div>
+    </div>
+    <div id="lgList"><div class="meta">Loading…</div></div>
+  </section>
+
+  <section class="page" id="page-settings" hidden>
+    <fieldset><legend>Tool</legend>
+      <dl class="kv" id="setTool"><dt>Folder</dt><dd class="meta">Loading…</dd></dl>
+    </fieldset>
+    <fieldset><legend>Requirements<button class="btn" type="button" id="setRecheck">Re-check</button></legend>
+      <dl class="kv" id="setReqs"><dt>Node.js</dt><dd class="meta">Open Setup to check.</dd></dl>
+    </fieldset>
+  </section>
+  <footer class="app-foot" id="appFoot">© 2026 Video Editing Tools</footer>
+</main>
+<script>
+(() => {
+  const $ = (s, el = document) => el.querySelector(s);
+  const $$ = (s, el = document) => [...el.querySelectorAll(s)];
+  const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+  const arr = (x) => (Array.isArray(x) ? x : []);
+  const ICONS = { copy: '<rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>' };
+  const icon = (name) => `<svg class="ico" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${ICONS[name] || ""}</svg>`;
+  { const b = $("#prCopy"); b.innerHTML = icon("copy") + `<span>${b.textContent}</span>`; }
+  const withCount = (label, n) => `${label}\u00a0(${n ?? 0})`;
+  const token = () => document.querySelector('meta[name="sa-token"]')?.content || "";
+  // Every request goes through call(): GET without data, POST (JSON) with it; uploads send the raw file.
+  const call = (url, data, method) => fetch(url, data === undefined && !method ? { cache: "no-store" } : { method: method || "POST", headers: { "content-type": "application/json", "x-sa-token": token() }, body: data === undefined ? undefined : JSON.stringify(data) }).then((r) => r.json()).catch(() => ({ error: "Lost connection to the app." }));
+  const upload = (project, kind, file) => fetch(`/api/projects/${project}/upload?kind=${kind}&name=${encodeURIComponent(file.name)}`, { method: "POST", headers: { "content-type": "application/octet-stream", "x-sa-token": token() }, body: file }).then((r) => r.json()).catch(() => ({ error: "Lost connection to the app." }));
+  const fileUrl = (p, dl) => `/api/file?path=${encodeURIComponent(p)}${dl ? "&download=1" : ""}`;
+  const store = { get: (k) => { try { return localStorage.getItem(k) || ""; } catch { return ""; } }, set: (k, v) => { try { localStorage.setItem(k, v); } catch {} } };
+  const errLine = (e) => `<span class="bad-text">${esc(String(e || "").slice(0, 200))}</span>`;
+  const size = (n) => (n > 1048576 ? `${(n / 1048576).toFixed(1)} MB` : `${Math.max(1, Math.round(n / 1024))} KB`);
+  addEventListener("error", (e) => call("/api/client-error", { message: e.message, stack: e.error?.stack || "" }));
+
+  let projects = [];
+  const current = () => store.get("project");
+  const projectOptions = (sel, value, all) => { sel.innerHTML = (all ? '<option value="">All</option>' : "") + projects.map((p) => `<option value="${esc(p.id)}"${p.id === value ? " selected" : ""}>${esc(p.name)}</option>`).join(""); };
+  const loadProjects = async () => { const r = await call("/api/projects"); projects = arr(r.projects); return r; };
+
+  // ----- tabs -----
+  const pages = ["overview", "project", "videos", "prompt", "log", "settings"];
+  function show(page) {
+    if (!pages.includes(page)) page = "overview";
+    for (const p of pages) $(`#page-${p}`).hidden = p !== page;
+    $(`#page-${page}`).append($("#appFoot"));
+    for (const b of $$("#tabs button")) b.setAttribute("aria-pressed", String(b.dataset.page === page));
+    store.set("page", page);
+    ({ overview: loadOverview, project: loadProject, videos: loadVideos, prompt: loadPrompt, log: loadLogs, settings: loadSettings })[page]?.();
+  }
+  for (const b of $$("#tabs button")) b.onclick = () => show(b.dataset.page);
+  window.saOpenSettings = () => show("settings");
+
+  // ----- Overview: one card per project + New project -----
+  async function loadOverview() {
+    const r = await loadProjects();
+    if (r.error) return ($("#ovList").innerHTML = errLine(r.error));
+    $("#ovList").innerHTML = projects.length ? projects.map((p) => `<div class="card open-card" tabindex="0" data-id="${esc(p.id)}">
+      <h3>${esc(p.name)}</h3>
+      <div class="meta">${esc(p.id)} · ${esc(p.status)} · captions ${esc(p.caption_lang)}</div>
+      <div class="meta">${withCount("Samples", p.samples)} · ${withCount("Source clips", p.sources)} · ${withCount("Builds", p.runs)}</div>
+      ${p.note ? `<div>${esc(p.note)}</div>` : ""}</div>`).join("") : '<div class="meta">No projects yet. Create one above.</div>';
+    for (const c of $$("#ovList .card")) c.onclick = c.onkeydown = (e) => { if (e.type === "keydown" && e.key !== "Enter") return; store.set("project", c.dataset.id); show("project"); };
+  }
+  $("#npCreate").onclick = async () => {
+    const name = $("#npName").value.trim();
+    if (!name) return ($("#npMsg").innerHTML = errLine("Enter a project name."));
+    const r = await call("/api/projects", { name, note: $("#npNote").value.trim(), caption_lang: $("#npLang").value });
+    if (r.error) return ($("#npMsg").innerHTML = errLine(r.error));
+    $("#npName").value = $("#npNote").value = ""; $("#npMsg").textContent = `Created ${r.project.id}.`;
+    store.set("project", r.project.id); loadOverview();
+  };
+
+  // ----- Project: samples (each with its own style.json) and shared source clips -----
+  const dropZone = (id, text, accept) => `<label class="drop" id="${id}">${esc(text)}<input type="file" multiple accept="${accept}" hidden></label>`;
+  function wireDrop(el, onFiles) {
+    const input = $("input", el);
+    input.onchange = () => { onFiles([...input.files]); input.value = ""; };
+    el.ondragover = (e) => { e.preventDefault(); el.classList.add("over"); };
+    el.ondragleave = () => el.classList.remove("over");
+    el.ondrop = (e) => { e.preventDefault(); el.classList.remove("over"); onFiles([...e.dataTransfer.files]); };
+  }
+  async function sendFiles(project, kind, list, msg) {
+    for (const [i, f] of list.entries()) {
+      msg.textContent = `Uploading ${i + 1}/${list.length}: ${f.name}…`;
+      const r = await upload(project, kind, f);
+      if (r.error) { msg.innerHTML = errLine(`${f.name}: ${r.error}`); return; }
+    }
+    loadProject();
+  }
+  async function loadProject() {
+    await loadProjects();
+    const sel = $("#pjSel");
+    let id = current();
+    if (!projects.some((p) => p.id === id)) id = projects[0]?.id || "";
+    projectOptions(sel, id);
+    sel.onchange = () => { store.set("project", sel.value); loadProject(); };
+    if (!id) { $("#pjInfo").textContent = ""; return ($("#pjBody").innerHTML = '<div class="meta">No projects yet. Create one in Overview.</div>'); }
+    store.set("project", id);
+    const r = await call(`/api/projects/${id}`);
+    if (r.error) return ($("#pjBody").innerHTML = errLine(r.error));
+    $("#pjInfo").textContent = `${r.project.id} · captions ${r.project.caption_lang}${r.project.note ? " · " + r.project.note : ""}`;
+    const samples = arr(r.samples), source = arr(r.source);
+    $("#pjBody").innerHTML = `<h3 class="block">${withCount("Samples", samples.length)}</h3>
+      ${dropZone("pjSampleDrop", "Add sample videos: click or drop files here", "video/*")}
+      <div class="msg" id="pjSampleMsg"></div>
+      <div class="tiles">${samples.map((s) => `<div class="tile" data-sid="${esc(s.id)}">
+        ${s.video ? `<video class="tile-img" src="${fileUrl(s.video)}" controls preload="metadata"></video>` : '<div class="tile-img none">No video</div>'}
+        <div class="tile-title"><span class="t" title="${esc(s.name)}">${esc(s.name)}</span><span class="status-tag">${s.analyzed ? "Analyzed" : "Not analyzed"}</span></div>
+        <div class="tile-sub">${esc(s.id)}</div>
+        ${s.style ? `<details><summary>style.json</summary><pre>${esc(JSON.stringify(s.style, null, 2))}</pre></details>` : '<div class="tile-sub">No style.json yet</div>'}
+        <div class="tile-foot"><button class="btn" type="button" data-rename>Rename</button><button class="btn" type="button" data-remove>Remove</button></div></div>`).join("")}</div>
+      <h3 class="block">${withCount("Source clips", source.length)}</h3>
+      ${dropZone("pjSourceDrop", "Add source clips (shared by every sample): click or drop files here", "video/*,image/*")}
+      <div class="msg" id="pjSourceMsg"></div>
+      <ul class="files">${source.map((f) => `<li><span class="n" title="${esc(f.name)}">${esc(f.name)}</span><span class="meta">${size(f.size)}</span><a class="btn" href="${fileUrl(f.path)}" target="_blank">Open</a><button class="btn" type="button" data-del-src="${esc(f.name)}">Remove</button></li>`).join("") || '<li class="meta">No source clips yet.</li>'}</ul>`;
+    wireDrop($("#pjSampleDrop"), (list) => sendFiles(id, "sample", list, $("#pjSampleMsg")));
+    wireDrop($("#pjSourceDrop"), (list) => sendFiles(id, "source", list, $("#pjSourceMsg")));
+    for (const t of $$("#pjBody .tile")) {
+      const sid = t.dataset.sid;
+      $("[data-remove]", t).onclick = async () => { if (!confirm("Remove this sample and its analysis?")) return; const x = await call(`/api/projects/${id}/samples/${sid}`, undefined, "DELETE"); if (x.error) alert(x.error); loadProject(); };
+      $("[data-rename]", t).onclick = async () => { const name = prompt("Sample name", $(".t", t).textContent); if (!name) return; const x = await call(`/api/projects/${id}/samples/${sid}`, { name }); if (x.error) alert(x.error); loadProject(); };
+    }
+    for (const b of $$("[data-del-src]")) b.onclick = async () => { if (!confirm(`Remove ${b.dataset.delSrc}?`)) return; const x = await call(`/api/projects/${id}/source/${encodeURIComponent(b.dataset.delSrc)}`, undefined, "DELETE"); if (x.error) alert(x.error); loadProject(); };
+  }
+
+  // ----- Videos: every build, filtered by review state -----
+  const STATES = [["ready", "To review"], ["approved", "Approved"], ["dropped", "Dropped"]];
+  let vdState = store.get("vdState") || "ready";
+  async function loadVideos() {
+    await loadProjects();
+    const project = $("#vdProject").value;
+    projectOptions($("#vdProject"), project, true);
+    $("#vdProject").onchange = loadVideos;
+    const r = await call("/api/videos");
+    if (r.error) return ($("#vdList").innerHTML = errLine(r.error));
+    const all = arr(r.videos).filter((v) => !project || v.project === project);
+    $("#vdState").innerHTML = STATES.map(([k, t]) => `<button class="btn" type="button" data-state="${k}" aria-pressed="${k === vdState}">${esc(withCount(t, all.filter((v) => v.status === k).length))}</button>`).join("");
+    for (const b of $$("#vdState button")) b.onclick = () => { vdState = b.dataset.state; store.set("vdState", vdState); loadVideos(); };
+    const list = all.filter((v) => v.status === vdState);
+    $("#vdList").innerHTML = list.length ? `<div class="tiles">${list.map((v) => `<div class="tile" data-project="${esc(v.project)}" data-run="${esc(v.run)}">
+      ${v.video ? `<video class="tile-img" src="${fileUrl(v.video)}" controls preload="metadata"${v.cover ? ` poster="${fileUrl(v.cover)}"` : ""}></video>` : '<div class="tile-img none">No video file</div>'}
+      <div class="tile-title"><span class="t">${esc(v.project_name)}</span>${v.cover ? `<a href="${fileUrl(v.cover)}" target="_blank" title="Cover"><img class="cover" src="${fileUrl(v.cover)}" alt="Cover"></a>` : ""}</div>
+      <div class="tile-sub">Run ${esc(v.run)}${v.sample_name ? ` · sample ${esc(v.sample_name)}` : ""}</div>
+      <div class="tile-foot">${v.status !== "approved" ? '<button class="btn primary" type="button" data-act="approve">Approve</button>' : ""}${v.status !== "dropped" ? '<button class="btn" type="button" data-act="drop">Drop</button>' : ""}${v.video ? `<a class="btn" href="${fileUrl(v.video, 1)}" download>Download</a>` : ""}</div></div>`).join("")}</div>` : '<div class="meta">Nothing here.</div>';
+    for (const b of $$("#vdList [data-act]")) b.onclick = async () => { const t = b.closest(".tile"); const x = await call(`/api/videos/${b.dataset.act}`, { project: t.dataset.project, run: t.dataset.run }); if (x.error) alert(x.error); loadVideos(); };
+  }
+
+  // ----- Prompt: mode × agent × project × sample, Copy prompt, Run progress -----
+  const MODES = [["analyze", "Analyze sample"], ["build", "Build video"]];
+  let prMode = store.get("prMode") || "analyze";
+  let progress = {};
+  async function loadPrompt() {
+    await loadProjects();
+    $("#prMode").innerHTML = MODES.map(([k, t]) => `<button class="btn" type="button" data-mode="${k}" aria-pressed="${k === prMode}">${esc(t)}</button>`).join("");
+    for (const b of $$("#prMode button")) b.onclick = () => { prMode = b.dataset.mode; store.set("prMode", prMode); loadPrompt(); };
+    $("#prAgent").value = store.get("prAgent") || "claude";
+    let id = current(); if (!projects.some((p) => p.id === id)) id = projects[0]?.id || "";
+    projectOptions($("#prProject"), id);
+    const r = id ? await call(`/api/projects/${id}`) : {};
+    const samples = arr(r.samples);
+    const sid = samples.some((s) => s.id === store.get("prSample")) ? store.get("prSample") : samples[0]?.id || "";
+    $("#prSample").innerHTML = samples.map((s) => `<option value="${esc(s.id)}"${s.id === sid ? " selected" : ""}>${esc(s.name)} (${s.analyzed ? "analyzed" : "not analyzed"})</option>`).join("") || '<option value="">No samples</option>';
+    const p = await call(`/api/prompt?mode=${prMode}&agent=${$("#prAgent").value}&project=${encodeURIComponent(id)}&sample=${encodeURIComponent(sid)}`);
+    $("#prText").value = p.prompt || p.error || "";
+    loadProgress();
+  }
+  $("#prAgent").onchange = () => { store.set("prAgent", $("#prAgent").value); loadPrompt(); };
+  $("#prProject").onchange = () => { store.set("project", $("#prProject").value); loadPrompt(); };
+  $("#prSample").onchange = () => { store.set("prSample", $("#prSample").value); loadPrompt(); };
+  $("#prCopy").onclick = async () => {
+    try { await navigator.clipboard.writeText($("#prText").value); } catch { $("#prText").select(); document.execCommand("copy"); }
+    await call("/api/progress", { mode: prMode, project: $("#prProject").value, agent: $("#prAgent").value });
+    $("#prMsg").textContent = "Copied. Paste into Claude Code / Codex opened in the tool folder";
+    loadProgress();
+  };
+  async function loadProgress() {
+    progress = await call("/api/progress");
+    const v = progress[prMode] || {}, run = v.run;
+    if (!run) { $("#prRunSum").innerHTML = '<span class="meta">No run yet. Copy prompt starts one.</span>'; $("#prRunSteps").innerHTML = ""; $("#prRunDetail").textContent = ""; return; }
+    const done = run.steps.filter((s) => s.state === "done").length;
+    $("#prRunSum").innerHTML = `<span>${run.finished ? "Finished" : v.active ? "Running" : "Stale"}</span><span class="meta">${done}/${run.steps.length} steps</span><span class="meta">${esc(run.project)}</span><span class="meta">${esc(new Date(run.updated).toLocaleString())}</span>`;
+    const now = run.steps.find((s) => s.state === "running");
+    $("#prRunSteps").innerHTML = run.steps.map((s) => `<li class="${s.state}${s === now ? " now" : ""}"><span class="dot ${s.state === "done" ? "dot-green" : s.state === "failed" ? "dot-red" : s.state === "running" ? "dot-run" : ""}"></span>${s.n}. ${esc(s.name)}</li>`).join("");
+    $("#prRunDetail").textContent = now?.detail || run.result || "";
+  }
+  setInterval(() => { if (!$("#page-prompt").hidden) loadProgress(); }, 5000);
+
+  // ----- Log -----
+  let lgMode = "";
+  async function loadLogs() {
+    await loadProjects();
+    const project = $("#lgProject").value;
+    projectOptions($("#lgProject"), project, true);
+    $("#lgProject").onchange = loadLogs;
+    const r = await call(`/api/log?project=${encodeURIComponent(project)}`);
+    if (r.error) return ($("#lgList").innerHTML = errLine(r.error));
+    const all = arr(r.logs);
+    $("#lgMode").innerHTML = [["", "All"], ["analyze", "Analyze sample"], ["build", "Build video"]].map(([k, t]) => `<button class="btn" type="button" data-mode="${k}" aria-pressed="${k === lgMode}">${esc(withCount(t, all.filter((l) => !k || l.mode === k).length))}</button>`).join("");
+    for (const b of $$("#lgMode button")) b.onclick = () => { lgMode = b.dataset.mode; loadLogs(); };
+    const list = all.filter((l) => !lgMode || l.mode === lgMode);
+    $("#lgList").innerHTML = list.length ? `<div class="cards">${list.map((l) => `<div class="card"><h3>${esc(l.mode === "build" ? "Build video" : "Analyze sample")} · ${esc(l.project)}</h3><div class="meta">${esc(new Date(l.at).toLocaleString())} · ${esc(l.agent || "agent")} · ${esc(l.result)}</div>${l.notes ? `<pre>${esc(l.notes)}</pre>` : ""}</div>`).join("")}</div>` : '<div class="meta">No runs yet.</div>';
+  }
+
+  // ----- Settings -----
+  async function loadSettings() {
+    const r = await fetch("/api/root").then((x) => x.json()).catch(() => ({}));
+    $("#setTool").innerHTML = `<dt>Folder</dt><dd>${esc(r.root || "")}</dd><dt>Address</dt><dd>${esc(location.origin)}</dd><dt>Version</dt><dd>${esc(r.version || "")}</dd><dt>Workspace</dt><dd>${esc((r.root || "") + "\\workspace")}</dd>`;
+  }
+  $("#setRecheck").onclick = () => { location.href = "/setup"; };
+
+  show(store.get("page") || "overview");
+})();
+</script>
+</body>
+</html>

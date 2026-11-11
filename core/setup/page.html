@@ -1,0 +1,38 @@
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Cấu hình</title>
+<link rel="stylesheet" href="/setup/tool.css">
+<script src="/setup/page.js" defer></script>
+<style>
+/* Cấu hình as a page of its own (core/setup/config-api.mjs serves it to the menu and every tool's server): Codex's sign-in,
+   then what has to be installed. */
+.setup-page { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
+.items { display: grid; gap: 8px; }
+.item { display: grid; grid-template-columns: 22px minmax(0, 1fr) auto; gap: 2px 10px; align-items: start; background: var(--surface); border: 1px solid var(--line); padding: 10px 12px; }
+.item .mark { font-size: 15px; color: var(--muted); line-height: 20px; }
+.item .body { min-width: 0; display: grid; gap: 2px; }
+.item .name { line-height: 20px; }
+.item .detail, .item .uses { color: var(--muted); font-size: 12px; overflow-wrap: anywhere; }
+.item .side { display: flex; flex-direction: column; gap: 6px; align-items: stretch; }
+.item .side .btn { min-width: 110px; }
+.item .err { color: #b06000; font-size: 12px; }
+header .again { margin-left: auto; }
+.note-line { color: var(--muted); font-size: 12px; margin-bottom: 8px; }
+@media (max-width: 760px) { .setup-page { grid-template-columns: minmax(0, 1fr); } }
+/* Narrow window: the buttons go under the text, side by side. */
+@media (max-width: 600px) { .item { grid-template-columns: 22px minmax(0, 1fr); } .item .side { grid-column: 2; flex-direction: row; flex-wrap: wrap; margin-top: 6px; } }
+</style>
+</head>
+<body>
+<main>
+  <header><button class="btn back" type="button">← Quay lại</button><h1>Cấu hình</h1><button class="btn again" type="button">Kiểm tra lại</button></header>
+  <div class="layout setup-page">
+    <section class="group wide"><h2>Tài khoản AI</h2><div class="note-line">Codex CLI tạo ảnh cảnh của thương hiệu, bằng tài khoản ChatGPT đã đăng nhập.</div><div class="items" id="ai"></div></section>
+    <section class="group"><h2>Cài đặt</h2><div class="items" id="base"></div></section>
+  </div>
+</main>
+</body>
+</html>

@@ -1,0 +1,128 @@
+/* Shared look of the app (ui/) and the Cấu hình page: the same Windows 10 classic style as Product Review
+   (apps/product-review/src/mac/ui/app.css): grey control background, Segoe UI 10pt, square controls, green accent. */
+:root {
+  --control: #f0f0f0; --ink: rgb(30, 30, 30); --muted: rgb(96, 96, 96); --line: rgb(172, 172, 172);
+  --accent: rgb(40, 140, 80); --accent-dark: rgb(32, 118, 66); --surface: #fff; --hover: rgb(230, 238, 248);
+  --font: "Segoe UI", "Segoe UI Web", -apple-system, "Helvetica Neue", Arial, sans-serif;
+  /* One control size for every input, select and button (primary differs only in colour). */
+  --ctl-h: 32px; --ctl-pad: 0 12px; --ctl-border: 1px solid #8a8a8a; --ctl-font: 13.33px;
+  color-scheme: light;
+}
+* { box-sizing: border-box; }
+/* hidden wins over a class that sets display (.btn), e.g. "← Menu" when there is no menu to go back to. */
+[hidden] { display: none !important; }
+body { margin: 0; background: var(--control); color: var(--ink); font: 13.33px/1.35 var(--font); -webkit-font-smoothing: antialiased; }
+/* The same frame as Product Review's window (1120 x 840 by default): 20px left, 24px right, 20px at the bottom,
+   the 64px header, then 14px to the first group; groups 16px apart side by side and 12px apart above and below. */
+main { padding: 0 24px 20px 20px; }
+header + * { margin-top: 14px; }
+header { display: flex; align-items: center; gap: 12px; height: 64px; }
+header img { width: 32px; height: 32px; }
+h1 { font-size: 17.33px; font-weight: 400; margin: 0; }
+.muted { color: var(--muted); }
+label { display: block; color: var(--ink); margin: 12px 0 4px; }
+input, textarea, select { width: 100%; font: inherit; font-size: var(--ctl-font); color: var(--ink); background: #fff; border: var(--ctl-border); border-radius: 0; padding: var(--ctl-pad); outline: none; }
+input:not([type=checkbox]):not([type=radio]), select { height: var(--ctl-h); }
+input[type=checkbox], input[type=radio] { width: auto; height: auto; padding: 0; }
+input:hover, textarea:hover, select:hover { border-color: #171717; }
+input:focus, textarea:focus, select:focus { border-color: #0078d7; }
+/* Selects match Product Review's combo: flat, with our own chevron set in from the right edge. */
+select { padding: 0 28px 0 10px; cursor: pointer; background: #e1e1e1 url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M1 1l4 4 4-4' fill='none' stroke='%23444' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E") no-repeat right 9px center; border-color: #adadad; appearance: none; -webkit-appearance: none; }
+select:hover { background-color: #e5f1fb; border-color: #0078d7; }
+select:disabled { background-color: #cccccc; border-color: #bfbfbf; color: #838383; cursor: default; }
+textarea { resize: vertical; min-height: 110px; line-height: 1.3; padding: 6px 10px; }
+.btn { display: inline-flex; align-items: center; justify-content: center; height: var(--ctl-h); padding: var(--ctl-pad); font: inherit; font-size: var(--ctl-font); line-height: 1; white-space: nowrap; color: #000; background: #e1e1e1; border: var(--ctl-border); border-radius: 0; cursor: default; text-decoration: none; flex: 0 0 auto; }
+.btn:hover { background: #e5f1fb; border-color: #0078d7; }
+.btn:active { background: #cce4f7; border-color: #005499; }
+.btn:disabled { background: #cccccc; border-color: #bfbfbf; color: #838383; }
+.btn.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+.btn.primary:hover { background: var(--accent-dark); border-color: var(--accent-dark); }
+/* Cards: white boxes with a grey border. */
+.card { background: var(--surface); border: 1px solid var(--line); padding: 10px 12px; }
+/* Windows scrollbars, as in Product Review. */
+::-webkit-scrollbar { width: 17px; height: 17px; background: #f0f0f0; }
+::-webkit-scrollbar-thumb { background: #cdcdcd; border: 0; }
+::-webkit-scrollbar-thumb:hover { background: #a6a6a6; }
+.note { background: var(--surface); border: 1px solid var(--line); padding: 6px 10px; color: var(--muted); }
+/* Header: [← Menu] Title … [Tải lại] [Cấu hình] [Cập nhật], at the top right as in Product Review (24px from the edge). */
+header .reload { margin-left: auto; }
+header .config { margin-left: auto; }
+header .reload + .config, header .reload + .update { margin-left: 0; }
+header .update { margin-left: auto; }
+header .config + .update { margin-left: 0; }
+/* Menu: whether Cấu hình is done (hub.js), above the tools; the tools need every step done. */
+.setup-status { display: flex; align-items: center; gap: 10px; min-height: 40px; padding: 8px 14px; margin-bottom: 12px; background: var(--surface); border: 1px solid var(--line); }
+.setup-status[hidden] { display: none; }
+.setup-status .mark { font-size: 15px; width: 18px; text-align: center; }
+.setup-status .text { flex: 1; min-width: 0; }
+.setup-status.ok { border-color: var(--accent); }
+.setup-status.ok .mark { color: darkgreen; }
+.setup-status.todo { border-color: #b06000; background: #fff8ef; }
+.setup-status.todo .mark { color: #b06000; }
+/* Cấu hình page (core/setup/page.html): Chép mã beside Codex's one-time code. */
+.copy-code { margin: 0 2px; padding: 1px 8px; font-size: 12px; min-height: 0; height: auto; }
+/* Dialog (Cập nhật), like Product Review's small windows. */
+.shade { position: fixed; inset: 0; background: rgba(0, 0, 0, .25); display: flex; align-items: center; justify-content: center; }
+.dialog { width: 440px; background: var(--control); border: 1px solid var(--line); box-shadow: 0 8px 24px rgba(0, 0, 0, .2); padding: 20px; }
+.dialog .status { min-height: 44px; }
+.dialog .bar { height: 10px; margin: 8px 0 20px; background: #e6e6e6; border: 1px solid #bcbcbc; overflow: hidden; }
+.dialog .bar > span { display: block; width: 22%; height: 100%; background: #06b025; animation: hub-marquee 2.2s linear infinite; }
+.dialog .actions { display: flex; justify-content: flex-end; gap: 10px; }
+.dialog .btn[hidden] { display: none; }
+@keyframes hub-marquee { from { transform: translateX(-100%); } to { transform: translateX(460%); } }
+/* Layout like Product Review's window: bordered groups with a heading inside (Link sản phẩm & ảnh, Thao tác…),
+   the main group on the left, "Thao tác" in a 224px column on the right, wide groups below; 20px between groups. */
+.layout { display: grid; grid-template-columns: minmax(0, 1fr) 224px; gap: 12px 16px; align-items: stretch; }
+.group { position: relative; background: var(--control); border: 1px solid var(--line); padding: 38px 14px 14px; min-width: 0; }
+.group.wide { grid-column: 1 / -1; }
+.group > h2 { position: absolute; top: 10px; left: 14px; margin: 0; font-size: 13.33px; font-weight: 400; color: var(--ink); }
+.group > label:first-of-type { margin-top: 0; }
+
+/* ----- One form system for the whole tool -----
+   .fields: a wrapping row of fields (16px between rows, 12px between columns), 24px below each group.
+   .field: label ABOVE the control (12px muted, 4px gap); 180px wide, .wide for text/paths, .auto for segmented buttons.
+   Every control (input of any type, select, the .select multi-select, segmented buttons) has the same height, border and
+   font. .actions: a row of buttons (and a short hint) with the same gap. */
+.fields { display: flex; flex-wrap: wrap; gap: 16px 12px; align-items: flex-start; margin: 0 0 24px; }
+.fields[hidden] { display: none; }
+.field { display: flex; flex-direction: column; gap: 4px; width: 180px; min-width: 0; }
+.field.wide { width: auto; flex: 1 1 360px; }
+.field.auto { width: auto; }
+.field > label, .field > .label { margin: 0; font-size: 12px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.field input:not([type=checkbox]):not([type=radio]), .field select, .field .select { width: 100%; box-sizing: border-box; }
+input[type=date], input[type=number] { font: inherit; font-size: var(--ctl-font); line-height: normal; }
+.field .checks { display: flex; flex-wrap: wrap; gap: 4px 16px; align-items: center; min-height: var(--ctl-h); }
+.field .checks label { display: flex; gap: 6px; align-items: center; margin: 0; font-size: var(--ctl-font); color: var(--ink); white-space: nowrap; }
+.field .inline-control { display: flex; gap: 8px; align-items: center; min-height: var(--ctl-h); } /* text beside a control row sits on its centre line */
+.field .inline-control > input, .field .inline-control > select { flex: 1 1 auto; min-width: 0; }
+/* A multi-select that looks like a select: a <details class="select"> with a <summary> and a list of checkboxes. */
+details.select { position: relative; height: var(--ctl-h); } /* fixed: opening it must not push the row down */
+/* Disabled controls (a choice that does not apply right now): greyed and not clickable, same look everywhere. */
+details.select.disabled > summary, input:disabled, select:disabled, textarea:disabled { background: #f3f3f3; color: #9a9a9a; border-color: #c8c8c8; pointer-events: none; }
+details.select > summary { list-style: none; display: flex; align-items: center; height: var(--ctl-h); box-sizing: border-box; padding: 0 28px 0 12px; border: var(--ctl-border); background: #fff; font-size: var(--ctl-font); color: var(--ink); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; cursor: default; position: relative; margin: 0; }
+details.select > summary::-webkit-details-marker { display: none; }
+details.select > summary::after { content: ""; position: absolute; right: 10px; top: 50%; margin-top: -2px; border: 4px solid transparent; border-top-color: var(--ink); }
+details.select > summary:hover { border-color: #171717; }
+details.select > .options { position: absolute; z-index: 5; top: calc(var(--ctl-h) - 1px); left: 0; min-width: 100%; max-height: 260px; overflow: auto; background: #fff; border: var(--ctl-border); padding: 4px 0; box-sizing: border-box; }
+details.select > .options .opt-group { padding: 6px 10px 2px; font-size: 12px; color: var(--muted); font-weight: 600; }
+details.select > .options .opt-group ~ label { padding-left: 18px; }
+details.select > .options label { display: flex; gap: 8px; align-items: center; margin: 0; padding: 4px 10px; white-space: nowrap; font-size: var(--ctl-font); color: var(--ink); }
+details.select > .options label:hover { background: var(--hover); }
+details.select > .options .meta { padding: 4px 10px; }
+/* Segmented buttons: the same height as every control. */
+.seg { display: inline-flex; } .seg .btn { margin-right: -1px; } .seg .btn[aria-pressed="true"] { background: #fff; border-color: var(--accent); position: relative; }
+.actions { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; margin: 0 0 24px; }
+.actions .meta { margin: 0; }
+/* Every button (plain, primary, segmented, card actions, header Reload/Update, links styled as buttons, tabs): text
+   centred on both axes at the controls' height. */
+.btn, a.btn, button.btn, nav.tabs button, .seg .btn { display: inline-flex; align-items: center; justify-content: center; box-sizing: border-box; height: var(--ctl-h); line-height: 1; padding-top: 0; padding-bottom: 0; vertical-align: middle; }
+.btn > *, nav.tabs button > * { line-height: 1; }
+/* Segoe UI has a deep descender, so text centred by its line box sits low: lift it by moving 2px of the box below. */
+.btn, a.btn, button.btn, nav.tabs button, .seg .btn { padding-bottom: 2px; }
+/* A multi-select's summary clips its text with an ellipsis before the arrow (a flex summary cannot ellipsize). Native
+   selects keep 28px on the right for their arrow; text never runs under an icon. */
+details.select > summary { display: block; line-height: calc(var(--ctl-h) - 2px); padding: 0 28px 0 12px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+select { text-overflow: ellipsis; white-space: nowrap; overflow: hidden; padding-right: 28px; }
+
+/* Button icons (hub.js header buttons, icon() in the pages): 16px, 6px before the text. */
+.btn .ico { flex: 0 0 auto; margin-right: 6px; }
