@@ -334,7 +334,9 @@ h3.block { margin: 0 0 12px; font-size: 14px; }
   }
 
   // ----- Videos: every build, filtered by review state -----
-  const STATES = [["ready", "To review"], ["approved", "Approved"], ["dropped", "Dropped"]];
+  const STATES = [["ready", "To review"], ["approved", "Approved"], ["dropped", "Dropped"], ["checking", "Checking"]];
+  // building / checking / check_failed all read as "Checking": not reviewable until check.mjs --pass.
+  const stateOf = (v) => (["ready", "approved", "dropped"].includes(v.status) ? v.status : "checking");
   let vdState = store.get("vdState") || "ready";
   async function loadVideos() {
     await loadProjects();
@@ -344,14 +346,14 @@ h3.block { margin: 0 0 12px; font-size: 14px; }
     const r = await call("/api/videos");
     if (r.error) return ($("#vdList").innerHTML = errLine(r.error));
     const all = arr(r.videos).filter((v) => !project || v.project === project);
-    $("#vdState").innerHTML = STATES.map(([k, t]) => `<button class="btn" type="button" data-state="${k}" aria-pressed="${k === vdState}">${esc(withCount(t, all.filter((v) => v.status === k).length))}</button>`).join("");
+    $("#vdState").innerHTML = STATES.map(([k, t]) => `<button class="btn" type="button" data-state="${k}" aria-pressed="${k === vdState}">${esc(withCount(t, all.filter((v) => stateOf(v) === k).length))}</button>`).join("");
     for (const b of $$("#vdState button")) b.onclick = () => { vdState = b.dataset.state; store.set("vdState", vdState); loadVideos(); };
-    const list = all.filter((v) => v.status === vdState);
+    const list = all.filter((v) => stateOf(v) === vdState);
     $("#vdList").innerHTML = list.length ? `<div class="tiles">${list.map((v) => `<div class="tile" data-project="${esc(v.project)}" data-run="${esc(v.run)}">
       ${v.video ? `<video class="tile-img" src="${fileUrl(v.video)}" controls preload="metadata"${v.cover ? ` poster="${fileUrl(v.cover)}"` : ""}></video>` : '<div class="tile-img none">No video file</div>'}
       <div class="tile-title"><span class="t">${esc(v.project_name)}</span>${v.cover ? `<a href="${fileUrl(v.cover)}" target="_blank" title="Cover"><img class="cover" src="${fileUrl(v.cover)}" alt="Cover"></a>` : ""}</div>
-      <div class="tile-sub">Run ${esc(v.run)}${v.sample_name ? ` · sample ${esc(v.sample_name)}` : ""}</div>
-      <div class="tile-foot">${v.status !== "approved" ? '<button class="btn primary" type="button" data-act="approve">Approve</button>' : ""}${v.status !== "dropped" ? '<button class="btn" type="button" data-act="drop">Drop</button>' : ""}${v.video ? `<a class="btn" href="${fileUrl(v.video, 1)}" download>Download</a>` : ""}</div></div>`).join("")}</div>` : '<div class="meta">Nothing here.</div>';
+      <div class="tile-sub">Run ${esc(v.run)}${v.sample_name ? ` · sample ${esc(v.sample_name)}` : ""}${stateOf(v) === "checking" ? ` · ${esc(v.status === "check_failed" ? "check failed" : "being checked")}` : ""}</div>
+      <div class="tile-foot">${["ready", "dropped"].includes(v.status) ? '<button class="btn primary" type="button" data-act="approve">Approve</button>' : ""}${["ready", "approved"].includes(v.status) ? '<button class="btn" type="button" data-act="drop">Drop</button>' : ""}${v.video ? `<a class="btn" href="${fileUrl(v.video, 1)}" download>Download</a>` : ""}</div></div>`).join("")}</div>` : '<div class="meta">Nothing here.</div>';
     for (const b of $$("#vdList [data-act]")) b.onclick = async () => { const t = b.closest(".tile"); const x = await call(`/api/videos/${b.dataset.act}`, { project: t.dataset.project, run: t.dataset.run }); if (x.error) alert(x.error); loadVideos(); };
   }
 
